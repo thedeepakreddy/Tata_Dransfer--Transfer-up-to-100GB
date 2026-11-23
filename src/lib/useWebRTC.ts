@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useCallManager } from './useCallManager';
+import { classifySelectedPath, type ConnectionType } from './connectionPath';
 import {
   MAX_CHAT_LENGTH,
   PROTOCOL_VERSION,
@@ -24,7 +25,7 @@ export type ConnectionState = 'idle' | 'connecting' | 'connected' | 'transferrin
 // It is only needed to introduce the two devices; once the data channel is
 // open, losing it does not end the session.
 export type SignalingState = 'idle' | 'connecting' | 'open' | 'reconnecting' | 'closed';
-export type ConnectionType = 'local' | 'relayed' | 'unknown';
+export type { ConnectionType } from './connectionPath';
 export type CallState = 'idle' | 'ringing' | 'incoming' | 'connecting' | 'active' | 'rejected' | 'ended';
 export type CallMode = 'audio' | 'video' | null;
 export interface CallQuality {
@@ -236,6 +237,10 @@ export function useWebRTC(userName: string = '') {
   const expectFreshOfferRef = useRef(false);
   // A peer has been paired at least once in this session.
   const pairedRef = useRef(false);
+  // Whether the signalling server last reported the other device in the room
+  // ('ready' = present, 'peer-disconnected' = its socket left). Relayed chat
+  // only reaches the peer while it is present.
+  const peerInRoomRef = useRef(false);
 
   const callManager = useCallManager(
     pcRef, wsRef, dcRef, userNameRef, setMessages, roleRef,
@@ -330,6 +335,7 @@ export function useWebRTC(userName: string = '') {
           }
         } else if (msg.type === 'ready') {
           pairedRef.current = true;
+          peerInRoomRef.current = true;
           const peerSession = typeof msg.peerSessionId === 'string' ? msg.peerSessionId : null;
           // The peer is a different page load (reloaded / discarded and
           // reopened): its old connection is gone even if our data channel
@@ -370,6 +376,7 @@ export function useWebRTC(userName: string = '') {
             callManagerRef.current?.handleCallMessage(payload);
           }
         } else if (msg.type === 'peer-disconnected') {
+          peerInRoomRef.current = false;
           // Only the other device's *socket* dropped. They may simply have
           // backgrounded the app; the peer-to-peer link can be perfectly fine.
           if (isPeerLive()) return;
@@ -432,6 +439,7 @@ export function useWebRTC(userName: string = '') {
     // Reuse the seat token only if it belongs to this exact room and role.
     seatTokenRef.current = null;
     pairedRef.current = false;
+    peerInRoomRef.current = false;
     lastPeerSessionRef.current = null;
     let saved: any = null;
     try {
@@ -573,8 +581,10 @@ export function useWebRTC(userName: string = '') {
     };
 
     pc.oniceconnectionstatechange = () => {
+      // A failed ICE check says nothing about relaying; the path is unknown
+      // until a new pair is selected (checkConnectionType runs on 'connected').
       if (pc.iceConnectionState === 'failed') {
-        setConnectionType('relayed');
+        setConnectionType('unknown');
       }
     };
 
@@ -586,16 +596,9 @@ export function useWebRTC(userName: string = '') {
   const checkConnectionType = async (pc: RTCPeerConnection) => {
     try {
       const stats = await pc.getStats();
-      let type: ConnectionType = 'unknown';
-      stats.forEach((report) => {
-        if (report.type === 'candidate-pair' && report.state === 'succeeded') {
-          const localCandidate = stats.get(report.localCandidateId);
-          if (localCandidate) {
-            type = localCandidate.candidateType === 'host' ? 'local' : 'relayed';
-          }
-        }
-      });
-      setConnectionType(type);
+      // Classify the pair the transport actually selected. Only a TURN 'relay'
+      // candidate is relayed; srflx/prflx paths are direct peer-to-peer.
+      setConnectionType(classifySelectedPath(stats));
     } catch (e) {
       console.error(e);
     }
@@ -1389,7 +1392,9 @@ export function useWebRTC(userName: string = '') {
     // not simply lost. That fallback is NOT end-to-end encrypted: the server
     // relays it and can read it, so such messages are flagged in the UI.
     let delivered = safeSend(dcRef.current, JSON.stringify({ type: 'chat', ...msg }));
-    if (!delivered && wsRef.current?.readyState === WebSocket.OPEN) {
+    // The relay only reaches the other device if it is still in the room;
+    // otherwise the server drops the message and it must not look sent.
+    if (!delivered && peerInRoomRef.current && wsRef.current?.readyState === WebSocket.OPEN) {
       try {
         wsRef.current.send(JSON.stringify({ type: 'chat', roomId: roomIdRef.current, payload: msg }));
         msg.viaRelay = true;

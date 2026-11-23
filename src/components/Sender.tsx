@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, ChangeEvent } from 'react';
 import QRCode from 'qrcode';
 import { useWebRTC, FileProgress } from '../lib/useWebRTC';
 import { formatBytes } from '../lib/utils';
+import { connectionLabel } from '../lib/connectionPath';
 import { v4 as uuidv4 } from 'uuid';
 
 import { ChatRoom } from './ChatRoom';
@@ -164,7 +165,7 @@ export function Sender({ onBack, userName }: SenderProps) {
             {!isConnected && <span className="pulse-dot"></span>}
             <span>
               {status === 'connecting' ? 'Waiting for peer...' : 
-               isConnected ? `Connected · ${connectionType === 'local' ? 'Local WiFi' : 'Relayed'}` : 
+               isConnected ? `Connected${connectionLabel(connectionType) ? ` · ${connectionLabel(connectionType)}` : ''}` : 
                'Disconnected'}
             </span>
           </div>

@@ -4,7 +4,7 @@ Tata Dransfer is a peer-to-peer (P2P) file sharing and real-time communication a
 
 ## Key Features
 
-*   **Large file transfers, direct to disk:** In Chrome and Edge (File System Access API), incoming data is written to disk as it arrives, so memory use stays flat however big the file is. The app is designed for files up to 100 GB, but transfers of that size have not been formally tested yet. In browsers without that API (Firefox, Safari), the received file is held in memory until it finishes, which limits practical file size to what the browser can hold.
+*   **Large file transfers, direct to disk:** In Chrome and Edge (File System Access API), incoming data is written to disk as it arrives, so memory use stays flat however big the file is. The app is designed for files up to 100 GB. So far, transfers have been verified, with checksums, up to **8 GiB**, in Chromium only, between two browser instances on one machine. Nothing larger has been tested, and nothing on real devices or networks yet (see `docs/phase-1.5/`). In browsers without that API (Firefox, Safari, all iOS browsers), the received file is held in memory until it finishes. That uses roughly twice the file size in RAM, so device memory limits practical file size.
 *   **Verified delivery:** The sender only shows a file as *delivered* once the receiver confirms it received every byte and finished writing it. A write failure, a short or oversized file, a cancellation or a lost connection is reported as a failure on both sides, never as success.
 *   **Cancellable transfers:** Either side can cancel a queued or running transfer. A partly written file is discarded.
 *   **Encrypted direct link:** Files, chat and call media on the peer-to-peer connection are encrypted in transit by WebRTC's built-in DTLS/SRTP. There is no extra application-level encryption layer. The two devices do not verify each other's keys out of band, so the encryption relies on the signalling server passing the connection setup through faithfully.
@@ -60,7 +60,11 @@ The deployed frontend connects to the standalone signalling server (`signaling-s
 npm run lint       # TypeScript type check
 npm test           # signalling server + transfer protocol tests (Node's built-in test runner)
 npm run build && npm run test:e2e   # real two-browser tests (needs Playwright + Chromium installed)
+npm run build && npm run test:validation   # lifecycle / failure campaign (signalling outage, screen share, recording, ...)
+npm run build && npm run validate:large -- --sizes=100M,1G   # large-file runs with on-disk hash check
 ```
+
+Run through these npm scripts, the browser suites **fail** if their prerequisites are missing, rather than quietly reporting skipped tests.
 
 The end-to-end suite starts the production server and drives two headless Chromium pages over a real WebRTC data channel. It covers successful transfers (byte-for-byte checked), zero-byte files, the in-memory download fallback, receiver disk-write failure, decline, cancellation from either side, either device disconnecting mid-transfer, chat over the data channel and through the relay fallback, reload and crashed-tab recovery, call teardown, and scripted hostile peers sending malformed, duplicate and out-of-order protocol messages. Playwright is not a package dependency, so the suite skips itself if it is not installed.
 
@@ -76,7 +80,7 @@ The end-to-end suite starts the production server and drives two headless Chromi
 
 *   Transfers do not resume after a disconnect or reload.
 *   Very large files have not been tested end to end at 100 GB.
-*   The receiver cannot slow the sender down if its disk is slower than the network; writes are batched but not flow-controlled.
+*   The receiver cannot slow the sender down if its disk is slower than the network. Writes are batched but not flow-controlled, so unwritten data builds up in memory (measured in Phase 1.5).
 *   Screen sharing is only available during video calls.
 
 ## License

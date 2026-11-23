@@ -36,6 +36,13 @@ const skip = !chromium
     ? 'run `npm run build` first'
     : false;
 
+// Run on purpose (`npm run test:e2e`), missing prerequisites are a failure,
+// not a quiet skip: node:test prints skipped tests as "ok ... # SKIP" and
+// exits 0, which reads as green in CI logs. A bare `node --test` still skips.
+if (skip && process.env.npm_lifecycle_event === 'test:e2e') {
+  test('prerequisites', () => assert.fail(`Cannot run the E2E suite: ${skip}`));
+}
+
 let server;
 let browser;
 let base;

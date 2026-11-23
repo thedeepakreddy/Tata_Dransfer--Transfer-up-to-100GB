@@ -2,6 +2,7 @@ import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { CallMode, CallState, CallQuality, ChatMessage, Role } from './useWebRTC';
 import { v4 as uuidv4 } from 'uuid';
 import { isValidCallMode } from './transferProtocol';
+import { classifySelectedPath } from './connectionPath';
 
 // An unanswered call stops ringing (on both sides) after this long.
 const RING_TIMEOUT_MS = 45_000;
@@ -207,23 +208,19 @@ export function useCallManager(
   const getConnectionQuality = useCallback(async () => {
     if (!pcRef.current) return null;
     const stats = await pcRef.current.getStats();
-    let candidatePair: any = null;
     let inboundVideo: any = null;
 
     stats.forEach((report) => {
-      if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
-        candidatePair = report;
-      }
       if (report.type === 'inbound-rtp' && report.kind === 'video') {
         inboundVideo = report;
       }
     });
 
-    let pathLabel = 'Connecting…';
-    if (candidatePair) {
-      const localCandidate = stats.get(candidatePair.localCandidateId);
-      pathLabel = localCandidate?.candidateType === 'host' ? 'Local WiFi ⚡' : 'Relayed 🌐';
-    }
+    const path = classifySelectedPath(stats);
+    const pathLabel = path === 'local' ? 'Local network ⚡'
+      : path === 'direct' ? 'Direct'
+      : path === 'relayed' ? 'Relayed 🌐'
+      : 'Connecting…';
 
     let qualityTier = 'Low';
     if (inboundVideo) {

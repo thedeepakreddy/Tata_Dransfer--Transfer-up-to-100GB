@@ -36,6 +36,7 @@ function useRingtone(isRinging: boolean) {
 
 import { useWebRTC, ChatMessage } from '../lib/useWebRTC';
 import { formatBytes } from '../lib/utils';
+import { connectionLabel } from '../lib/connectionPath';
 
 /* ---------- icons ---------- */
 const svg = (d: string, extra?: React.ReactNode) => (
@@ -242,7 +243,7 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
             ) : status === 'reconnecting' ? (
               <span className="status-reconnecting"><span className="pulse-dot warn"></span>Reconnecting&hellip;</span>
             ) : (
-              <><span className="pulse-dot"></span>Connected &middot; {connectionType === 'local' ? 'Local WiFi' : 'Relayed'}</>
+              <><span className="pulse-dot"></span>Connected{connectionLabel(connectionType) ? <> &middot; {connectionLabel(connectionType)}</> : null}</>
             )}
           </div>
         </div>
