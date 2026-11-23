@@ -136,7 +136,6 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
   const [callDuration, setCallDuration] = useState(0);
   const localVideoRef = useRef<HTMLVideoElement>(null);
   const remoteVideoRef = useRef<HTMLVideoElement>(null);
-  const recorderHandleRef = useRef<{ stop: () => Promise<Blob> } | null>(null);
 
   useRingtone(hook.callState === 'ringing' || hook.callState === 'incoming');
 
@@ -169,28 +168,17 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
   }, [hook.remoteStream]);
 
   const handleRecordToggle = async () => {
-    if (hook.isRecording && recorderHandleRef.current) {
-      const blob = await recorderHandleRef.current.stop();
-      recorderHandleRef.current = null;
-      // A recording belongs to the device that made it, so it is saved straight
-      // to disk rather than pushed across the transfer channel.
-      const rec = hook.packageRecordingForChat?.(blob);
-      if (rec) {
-        const a = document.createElement('a');
-        a.href = rec.objectUrl;
-        a.download = rec.filename;
-        a.click();
-        // Give the browser time to start the download before releasing the URL.
-        setTimeout(() => URL.revokeObjectURL(rec.objectUrl), 60_000);
-      }
+    // A recording belongs to the device that made it, so it is saved straight
+    // to disk rather than pushed across the transfer channel. The hook owns the
+    // recorder, so a call that ends mid-recording still saves it.
+    if (hook.isRecording) {
+      await hook.stopRecording?.();
       return;
     }
-
-    recorderHandleRef.current =
-      hook.startRecording?.({
-        localVideoEl: localVideoRef.current,
-        remoteVideoEl: remoteVideoRef.current,
-      }) ?? null;
+    hook.startRecording?.({
+      localVideoEl: localVideoRef.current,
+      remoteVideoEl: remoteVideoRef.current,
+    });
   };
 
   useEffect(() => {
@@ -353,7 +341,9 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
 
       <div className="thread" id="thread">
         <div className="day-divider"><span>Secure Session</span></div>
-        <div className="conn-note"><span className="dot"></span>End-to-End Encrypted</div>
+        <div className="conn-note" title="Files and messages sent over the direct peer-to-peer link are encrypted by WebRTC (DTLS). If that link is down, chat messages fall back to the signalling server, which can read them; those are marked.">
+          <span className="dot"></span>Encrypted direct link
+        </div>
 
         {messages.map((msg: ChatMessage) => {
           if (msg.isSystemMessage) {
@@ -376,7 +366,12 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
             else if (file.name.match(/\.(mp4|mov|webm|mkv|avi)$/i)) kind = 'vid';
             else if (file.name.match(/\.(mp3|wav|m4a|flac|ogg|aac)$/i)) kind = 'aud';
 
-            const pct = Math.max(0, Math.min(100, (file.bytesTransferred / file.size) * 100));
+            const pct = file.size > 0
+              ? Math.max(0, Math.min(100, (file.bytesTransferred / file.size) * 100))
+              : (file.status === 'complete' ? 100 : 0);
+            const isFinal = ['complete', 'declined', 'cancelled', 'error', 'unconfirmed'].includes(file.status);
+            const canCancel = file.status === 'pending' || file.status === 'transferring' ||
+              (file.status === 'waiting_for_accept' && isSender);
             const dashOffset = 69.1 - (69.1 * pct / 100);
 
             return (
@@ -395,17 +390,24 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
                       <div className="file-name">{file.name}</div>
                       <div className="file-sub">
                         {formatBytes(file.size)} &middot; {
-                          file.status === 'complete' ? (isSender ? 'sent' : 'received') :
+                          file.status === 'complete' ? (isSender ? 'delivered' : 'received') :
+                          file.status === 'verifying' ? 'waiting for confirmation…' :
+                          file.status === 'unconfirmed' ? 'sent · delivery not confirmed' :
                           file.status === 'waiting_for_accept' ? 'pending acceptance' :
+                          file.status === 'pending' ? 'queued' :
                           file.status === 'declined' ? 'declined' :
+                          file.status === 'cancelled' ? 'cancelled' :
+                          file.status === 'error' ? `failed${file.error ? ` — ${file.error}` : ''}` :
                           `${isSender ? 'sending' : 'receiving'} — ${Math.round(pct)}%`
                         }
                       </div>
                     </div>
                     {file.status === 'complete' ? (
                       <div className="file-check">✓</div>
-                    ) : file.status === 'declined' ? (
+                    ) : file.status === 'declined' || file.status === 'cancelled' || file.status === 'error' ? (
                       <div className="file-check">✕</div>
+                    ) : file.status === 'unconfirmed' ? (
+                      <div className="file-check">?</div>
                     ) : file.status !== 'waiting_for_accept' ? (
                       <div className="file-progress-ring">
                         <svg viewBox="0 0 26 26">
@@ -431,7 +433,14 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
                       </button>
                     </div>
                   )}
-                  <div className="msg-time">{file.status === 'complete' || file.status === 'declined' ? timeString : 'Transferring…'}</div>
+                  {canCancel && (
+                    <div className="offer-actions">
+                      <button className="offer-btn decline" onClick={() => hook.cancelTransfer?.(file.fileId)}>
+                        Cancel
+                      </button>
+                    </div>
+                  )}
+                  <div className="msg-time">{isFinal ? timeString : 'Transferring…'}</div>
                 </div>
               </div>
             );
@@ -441,7 +450,12 @@ export function ChatRoom({ hook, onBack }: { hook: ReturnType<typeof useWebRTC>,
             <div key={msg.id} className={rowClass}>
               <div className="bubble-group">
                 <div className="bubble">{msg.text}</div>
-                <div className="msg-time">{timeString}</div>
+                <div className="msg-time">
+                  {timeString}
+                  {msg.viaRelay && (
+                    <span title="The direct link was down, so this message went through the signalling server. It is not end-to-end encrypted."> &middot; via server relay</span>
+                  )}
+                </div>
               </div>
             </div>
           );

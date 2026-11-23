@@ -112,10 +112,11 @@ export function Sender({ onBack, userName }: SenderProps) {
                 {file.status === 'pending' && <div className="progress-wrap"><div className="progress-fill" style={{ width: '0%' }}></div></div>}
                 {file.status === 'transferring' && (
                   <div className="progress-wrap">
-                    <div className="progress-fill" style={{ width: `${Math.max(5, (file.bytesTransferred / file.size) * 100)}%` }}></div>
+                    <div className="progress-fill" style={{ width: `${file.size > 0 ? Math.max(5, (file.bytesTransferred / file.size) * 100) : 100}%` }}></div>
                   </div>
                 )}
-                {file.status === 'complete' && <span className="check">Done</span>}
+                {file.status === 'complete' && <span className="check">Delivered</span>}
+                {file.status === 'error' && <span className="check">Failed</span>}
               </div>
             ))}
           </div>
