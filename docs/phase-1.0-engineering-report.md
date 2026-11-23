@@ -1,6 +1,6 @@
 # Phase 1.0: Critical Bug Fixing and Engineering Hardening Report
 
-**Overall status: PARTIAL.** All verified critical defects in scope are fixed and covered by tests that ran and passed: 29 unit/integration tests and 10 real two-browser end-to-end tests. The status is PARTIAL, not PASS, for three reasons. Testing used headless Chromium on one machine only (no Firefox, Safari or mobile, and no real network conditions). Transfers far larger than 400 MB were not exercised. And a few architectural limits (listed below) were deliberately deferred to V2.
+**Overall status: PARTIAL.** All verified critical defects in scope are fixed and covered by tests that ran and passed: 31 unit/integration tests and 18 real two-browser end-to-end tests. Every item on the PDF's Phase 3 test list now has a test. The self-review the PDF asks for (workflow step 8) was done, and its findings are fixed or listed below. The status is PARTIAL, not PASS, for three reasons. Testing used headless Chromium on one machine only (no Firefox, Safari or mobile, and no real network conditions). Transfers far larger than 400 MB were not exercised. And a few architectural limits (listed below) were deliberately deferred to V2.
 
 ## 1. Verified defects and root causes
 
@@ -64,6 +64,21 @@ Each item was confirmed by reading the code, and where possible by a failing tes
 | M9 | Late tracks after hang-up could flip the UI back to "active". Peer-supplied call `mode` and SDP were not validated, and `call-offer` was accepted while idle. | Missing state guards. |
 | M10 | A server error (for example "Room is full" on a reconnect) tore down a session whose peer link was still working. | The `error` handler did not check link state. |
 
+### Found in a second pass (self-review and extra tests)
+
+| # | Defect | Root cause |
+|---|---|---|
+| R1 | **A reloaded sender lost its session.** `Sender.tsx` is written to resume its room after a reload, but the app always opened on the home screen, so that code never ran. Found by the new reload E2E test. | `App.tsx` only routed `?room=` links (receivers), never a saved sender session. |
+| R2 | **A peer whose tab died without a clean shutdown (an OS-discarded mobile tab, a crash) could not re-pair.** The surviving side's data channel still said `open`, so it ignored the new `ready` (or treated a fresh offer as an ICE restart). | No way to tell "peer reconnected its socket" from "peer is a new page". |
+| R3 | **An ICE restart was skipped for good if the signalling socket was down at that moment**, which is exactly the backgrounded-tab case. | Nothing retried it once the socket reconnected. |
+| R4 | **A sender could wait forever on "pending acceptance", blocking its whole queue,** if the receiver had already settled that file (for example it failed when the old channel dropped). | The receiver silently ignored re-offers of files it had already finished with. |
+| R5 | **Two tabs sharing one seat token kept evicting each other** (a duplicated tab copies `sessionStorage`). | Tokens were reusable forever. |
+| R6 | When the other device left on purpose, the remaining side kept showing "Connected" until ICE timed out. | Data channel close did not update the session status. |
+| R7 | A sender still showing its QR code was switched to an empty chat room if its socket dropped (pre-existing). | `reconnecting` was set even before anyone had paired. |
+| R8 | In development (React StrictMode), a reloaded device lost its seat token. | Effect cleanup cleared storage between StrictMode's two passes. |
+| R9 | Call failures caused by connection setup were reported as "camera or microphone unavailable". | One error message for every failure. |
+| R10 | Chat messages over 64 KB sent through the relay were shown as sent but dropped by the server. | No outgoing length limit. |
+
 ## 2. Fixes implemented
 
 **Transfer protocol v2** (backward compatible, documented in `src/lib/transferProtocol.ts`):
@@ -87,6 +102,19 @@ Each item was confirmed by reading the code, and where possible by a failing tes
 *   same-role replacement only with the **seat token** issued at join (or when the old socket is already dead). The client stores the token in `sessionStorage` for reloads;
 *   no membership, relaying or disconnect broadcasts for rejected sockets, and no spurious disconnects on replacement;
 *   no internal error details sent to clients.
+
+**Second pass:**
+
+*   R1: the app reopens the sender screen when a sender session is saved.
+*   R2: each page load sends a random `sessionId` on join, and the server passes the other peer's id in `ready`. A changed id forces a fresh handshake.
+*   R3: a pending ICE restart is retried as soon as the socket rejoins.
+*   R4: re-offers of settled files are answered with `file-decline` / `file-cancel`.
+*   R5: the seat token rotates on every reclaim and only the new holder receives it.
+*   R6: closing the live data channel marks the session disconnected.
+*   R7: `reconnecting` only applies after a peer has paired.
+*   R8: the saved session is read once per page load.
+*   R9: separate error messages for media failures and connection-setup failures.
+*   R10: chat is capped at 10,000 characters, with a notice when a message is refused.
 
 **Calls:** a separate camera stream ref, a ref-based screen-share state, re-checking the call state after `getUserMedia`, `handleConnectionLost()` (called on data-channel close, peer-connection replacement and grace expiry), a 45-second ring timeout, "missed call" logging, a recorder owned by the call lifecycle (stopped and saved on hang-up), and validation of peer call messages.
 
@@ -114,17 +142,28 @@ No new dependencies were added. Tests use Node's built-in `node:test`, with `tsx
 
 *   `npm run lint` (`tsc --noEmit`): **pass**
 *   `npm run build` (Vite + esbuild): **pass** (the existing warning about a chunk over 500 kB is unchanged)
-*   `npm test`: **29/29 pass**
-    *   17 signalling integration tests against a real ws server: pairing and initiator, relay isolation, room full, rejected-peer injection and fake disconnect, token-gated replacement, no spurious disconnect on replacement, guessed tokens refused, leave and cleanup, malformed / invalid room / invalid role, duplicate role, pre-join messages, room switching, oversize frames, rate limit, room cap, room expiry, `parseMessage` robustness
+*   `npm test`: **31/31 pass**
+    *   19 signalling integration tests (including token rotation, duplicate-tab eviction and peer session ids) against a real ws server: pairing and initiator, relay isolation, room full, rejected-peer injection and fake disconnect, token-gated replacement, no spurious disconnect on replacement, guessed tokens refused, leave and cleanup, malformed / invalid room / invalid role, duplicate role, pre-join messages, room switching, oversize frames, rate limit, room cap, room expiry, `parseMessage` robustness
     *   12 protocol unit tests: transitions, filename sanitisation, metadata validation, overflow, completion verification, ack evaluation, chat/name/mode validation
-*   `npm run test:e2e`: **10/10 pass** (headless Chromium, two pages, production build). Covers successful 5 MB transfer (SHA-256 verified, writes batched), in-memory fallback download (SHA-256 verified), zero-byte file, disk write failure (both sides fail, partial file aborted), decline then next file, sender cancel mid-transfer (400 MB), receiver disconnect mid-transfer (400 MB), chat over the data channel, video-call teardown releasing all tracks, peer loss during a call.
+*   `npm run test:e2e`: **18/18 pass** (headless Chromium, two pages, production build). Covers:
+    *   successful 5 MB transfer (SHA-256 verified, writes batched), in-memory fallback download (SHA-256 verified), zero-byte file
+    *   disk write failure (both sides fail, partial file aborted), decline then next file
+    *   sender cancel and receiver cancel mid-transfer (400 MB)
+    *   receiver disconnect and sender disconnect mid-transfer (400 MB)
+    *   chat over the data channel, chat fallback through the relay when WebRTC is unavailable (labelled), the chat length cap
+    *   video-call teardown releasing all tracks, peer loss during a call
+    *   sender reload reclaiming its seat with its token
+    *   a crashed sender tab re-paired with a fresh handshake (verified to fail when the R2 fix is disabled)
+    *   prompt "disconnected" when the other device leaves
+    *   **a scripted hostile sender**: malformed JSON, non-string chat, spoofed system notice, invalid offers, path-traversal and bidi file names, duplicate offers, chunks before acceptance, overflow, short file, duplicate and stray EOF (exactly one ack), re-offers of settled files
+    *   **a scripted hostile receiver**: wrong-size ack rejected, a later correct ack cannot revive the file, stray / late / contradicting acks ignored, duplicate accept harmless
 
-**Not tested:** Firefox, Safari, mobile browsers, real NAT / TURN paths, transfers above 400 MB, screen sharing (it cannot be driven headlessly without extra flags), the recording UI, and session restore across a real reload.
+**Not tested:** Firefox, Safari, mobile browsers, real NAT / TURN paths, transfers above 400 MB, screen sharing (it cannot be driven headlessly without extra flags), the recording UI, the ring timeout (45 s) and R3 / R7 (they need the signalling socket to drop mid-session, which the E2E harness does not simulate).
 
 ## 5. Remaining known bugs and limitations
 
 *   No transfer resume after disconnect or reload (documented).
-*   **No receiver-to-sender flow control:** if the receiver's disk is slower than the network, pending writes pile up in memory. This is rare on LAN-speed WebRTC, but unbounded.
+*   **No receiver-to-sender flow control:** if the receiver's disk is slower than the network, pending writes pile up in memory. This is rare on LAN-speed WebRTC, but unbounded; a slow USB drive on a fast LAN could exhaust memory. Fixing it needs a protocol change, so it is deferred to V2 as the PDF directs.
 *   The in-memory fallback (Firefox, Safari) cannot handle very large files.
 *   If the data channel closes while the receiver is finalising a file, the receiver can show "received" while the sender shows "failed". This is conservative, but inconsistent.
 *   Mute / camera buttons only re-render on the next state change (they update within about a second during a call).
@@ -161,4 +200,4 @@ No new dependencies were added. Tests use Node's built-in `node:test`, with `tsx
 
 ## Deployment note
 
-`signaling-server.js` now imports `./signaling-core.js`. The Render service must deploy the repository root (as it does today) so both files are present. The client sends an extra `token` field on join and receives a new `joined` message. Older clients ignore `joined` and simply cannot reclaim a seat with a token, which is the old "Room is full" behaviour for a live seat.
+`signaling-server.js` now imports `./signaling-core.js`. The Render service must deploy the repository root (as it does today) so both files are present. The client sends extra `token` and `sessionId` fields on join and receives a new `joined` message and a `peerSessionId` in `ready`. Older clients ignore `joined` and simply cannot reclaim a seat with a token, which is the old "Room is full" behaviour for a live seat.

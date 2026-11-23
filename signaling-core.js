@@ -25,6 +25,9 @@ const VALID_ROLES = new Set(['sender', 'receiver']);
 // more so older links keep working. Anything else is rejected outright.
 const ROOM_ID_RE = /^[A-Za-z0-9_-]{4,32}$/;
 const TOKEN_RE = /^[A-Za-z0-9_-]{16,64}$/;
+const SESSION_RE = /^[A-Za-z0-9_-]{8,64}$/;
+
+const newToken = () => randomBytes(18).toString('base64url');
 
 /** Message types relayed verbatim to the other peer in the room. */
 const RELAY_TYPES = new Set([
@@ -136,7 +139,7 @@ export function attachSignaling(wss, options = {}) {
   }
 
   function handleJoin(ws, st, msg) {
-    const { roomId, role, token } = msg;
+    const { roomId, role, token, sessionId } = msg;
     st.joins += 1;
     if (st.joins > opts.maxJoinsPerSocket) {
       reject(ws, 'Too many join attempts', 'RATE_LIMITED');
@@ -183,20 +186,18 @@ export function attachSignaling(wss, options = {}) {
         holder.roomId = null;
         log(`Replaced stale ${role} in room ${roomId}`);
         try { sameRole.terminate(); } catch { /* already gone */ }
-        // The rightful owner keeps its token; a newcomer that only got in
-        // because the old socket was dead gets a fresh one, never the old.
-        if (tokenMatches) st.token = holder.token;
+        // Every reclaim rotates the token and only the new holder learns it.
+        // Otherwise two tabs sharing one token (a duplicated tab copies
+        // sessionStorage) would keep kicking each other out forever.
+        st.token = newToken();
       } else if (room.peers.size >= 2) {
         return reject(ws, 'Room is full', 'ROOM_FULL');
       }
 
-      if (!st.token) {
-        st.token = typeof token === 'string' && TOKEN_RE.test(token)
-          ? token
-          : randomBytes(18).toString('base64url');
-      }
+      if (!st.token) st.token = newToken();
       st.role = role;
       st.roomId = roomId;
+      st.sessionId = typeof sessionId === 'string' && SESSION_RE.test(sessionId) ? sessionId : null;
       room.peers.add(ws);
     }
 
@@ -206,8 +207,11 @@ export function attachSignaling(wss, options = {}) {
 
     if (room.peers.size === 2) {
       const [first, second] = Array.from(room.peers);
-      send(first, { type: 'ready', roomId, isInitiator: true });
-      send(second, { type: 'ready', roomId, isInitiator: false });
+      // peerSessionId identifies the other device's page load, so a client can
+      // tell a peer that merely reconnected its socket from a reloaded peer.
+      const sid = (ws) => state.get(ws)?.sessionId ?? undefined;
+      send(first, { type: 'ready', roomId, isInitiator: true, peerSessionId: sid(second) });
+      send(second, { type: 'ready', roomId, isInitiator: false, peerSessionId: sid(first) });
     }
   }
 
@@ -226,6 +230,7 @@ export function attachSignaling(wss, options = {}) {
       roomId: null,
       role: null,
       token: null,
+      sessionId: null,
       joins: 0,
       missedPongs: 0,
       bucket: opts.rateBurst,

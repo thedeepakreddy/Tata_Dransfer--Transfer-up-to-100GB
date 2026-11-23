@@ -2,6 +2,7 @@ import { useState, useEffect, useRef, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import { useCallManager } from './useCallManager';
 import {
+  MAX_CHAT_LENGTH,
   PROTOCOL_VERSION,
   canTransition,
   cleanReason,
@@ -215,6 +216,26 @@ export function useWebRTC(userName: string = '') {
   const peerProtoRef = useRef(1);
   // Signalling seat token, proves this device owns its seat when rejoining.
   const seatTokenRef = useRef<string | null>(null);
+  // The saved session as it was when this page loaded. Read once, because
+  // React StrictMode runs effect cleanup (which clears storage) between its two
+  // effect passes, and a reloaded page must not lose its token to that.
+  const initialSessionRef = useRef<{ room?: string; role?: string; token?: string } | null | undefined>(undefined);
+  if (initialSessionRef.current === undefined) {
+    try {
+      initialSessionRef.current = JSON.parse(sessionStorage.getItem('td:session') || 'null');
+    } catch {
+      initialSessionRef.current = null;
+    }
+  }
+  // Identifies this page load to the other device (via the server's 'ready'),
+  // so it can tell "my peer's socket reconnected" from "my peer is a new page".
+  const pageSessionIdRef = useRef<string>(uuidv4().replace(/-/g, ''));
+  const lastPeerSessionRef = useRef<string | null>(null);
+  // Set when the peer is a new page: its next offer starts a fresh connection
+  // even though our stale data channel may still report 'open'.
+  const expectFreshOfferRef = useRef(false);
+  // A peer has been paired at least once in this session.
+  const pairedRef = useRef(false);
 
   const callManager = useCallManager(
     pcRef, wsRef, dcRef, userNameRef, setMessages, roleRef,
@@ -285,6 +306,7 @@ export function useWebRTC(userName: string = '') {
         type: 'join',
         roomId: room,
         role: clientRole,
+        sessionId: pageSessionIdRef.current,
         // Lets a reloaded or reconnecting device reclaim its own seat. The
         // server refuses same-role replacement without it.
         ...(seatTokenRef.current ? { token: seatTokenRef.current } : {}),
@@ -300,14 +322,28 @@ export function useWebRTC(userName: string = '') {
             seatTokenRef.current = msg.token;
             persistSession();
           }
+          // An ICE restart that was skipped while the socket was down (it needs
+          // the socket to send its offer) can go out now.
+          const pc = pcRef.current;
+          if (pc && (pc.connectionState === 'failed' || pc.connectionState === 'disconnected')) {
+            void attemptIceRestart();
+          }
         } else if (msg.type === 'ready') {
-          // Re-joining after a socket reconnect also produces 'ready'. If the
-          // peer channel is already up this is not a fresh pairing, and starting
-          // a new handshake would destroy the working connection.
-          if (isPeerLive()) {
+          pairedRef.current = true;
+          const peerSession = typeof msg.peerSessionId === 'string' ? msg.peerSessionId : null;
+          // The peer is a different page load (reloaded / discarded and
+          // reopened): its old connection is gone even if our data channel
+          // still reports 'open', so a fresh handshake is required.
+          const peerIsNewPage = !!peerSession && !!lastPeerSessionRef.current && peerSession !== lastPeerSessionRef.current;
+          if (peerSession) lastPeerSessionRef.current = peerSession;
+          // Otherwise, re-joining after a socket reconnect also produces
+          // 'ready'. If the peer channel is still up this is not a fresh
+          // pairing, and a new handshake would destroy the working connection.
+          if (isPeerLive() && !peerIsNewPage) {
             if (statusRef.current === 'reconnecting') setStatus('connected');
             return;
           }
+          if (peerIsNewPage) expectFreshOfferRef.current = true;
           isInitiatorRef.current = !!msg.isInitiator;
           setStatus('connected');
           if (msg.isInitiator) {
@@ -375,7 +411,9 @@ export function useWebRTC(userName: string = '') {
       setSignalingState('closed');
       // Backgrounding a tab routinely kills this socket. Keep the session alive
       // while the peer channel is up, and try to bring the socket back.
-      if (!isPeerLive() && statusRef.current !== 'error' && statusRef.current !== 'idle') {
+      // Before anyone has paired there is no session to "reconnect": stay on
+      // the waiting screen (QR code) while the socket comes back.
+      if (pairedRef.current && !isPeerLive() && statusRef.current !== 'error' && statusRef.current !== 'idle') {
         setStatus('reconnecting');
       }
       scheduleReconnect();
@@ -393,12 +431,18 @@ export function useWebRTC(userName: string = '') {
     reconnectAttemptsRef.current = 0;
     // Reuse the seat token only if it belongs to this exact room and role.
     seatTokenRef.current = null;
+    pairedRef.current = false;
+    lastPeerSessionRef.current = null;
+    let saved: any = null;
     try {
-      const saved = JSON.parse(sessionStorage.getItem('td:session') || 'null');
-      if (saved?.room === room && saved?.role === clientRole && typeof saved.token === 'string') {
-        seatTokenRef.current = saved.token;
-      }
+      saved = JSON.parse(sessionStorage.getItem('td:session') || 'null');
     } catch { /* private mode or corrupt entry */ }
+    for (const candidate of [saved, initialSessionRef.current]) {
+      if (candidate?.room === room && candidate?.role === clientRole && typeof candidate.token === 'string') {
+        seatTokenRef.current = candidate.token;
+        break;
+      }
+    }
     // Remember the room so a discarded or reloaded page can rejoin it.
     persistSession();
     connectSocket();
@@ -599,7 +643,8 @@ export function useWebRTC(userName: string = '') {
     // An offer arriving while the session is live is a renegotiation (an ICE
     // restart), not a new pairing. Reusing the connection keeps the open data
     // channel and any in-flight transfer alive; rebuilding it would kill both.
-    const isRenegotiation = !!existing && isPeerLive() && existing.signalingState !== 'closed';
+    const isRenegotiation = !!existing && isPeerLive() && existing.signalingState !== 'closed' && !expectFreshOfferRef.current;
+    expectFreshOfferRef.current = false;
     const pc = isRenegotiation ? existing! : createPeerConnection();
 
     if (!isRenegotiation) {
@@ -713,7 +758,12 @@ export function useWebRTC(userName: string = '') {
       // Anything that was streaming over this channel is lost. Pending offers
       // survive and are re-sent if a new channel opens.
       failTransfersOnChannel(dc, 'Connection lost during transfer');
-      if (dcRef.current === dc) callManagerRef.current?.handleConnectionLost();
+      if (dcRef.current === dc) {
+        callManagerRef.current?.handleConnectionLost();
+        // The live channel is gone (for example the other device left). Say so
+        // now rather than after ICE times out; a new handshake flips it back.
+        if (statusRef.current !== 'idle' && statusRef.current !== 'error') setStatus('disconnected');
+      }
     };
 
     dc.onmessage = (event) => {
@@ -1014,8 +1064,11 @@ export function useWebRTC(userName: string = '') {
     const idx = sendQueueRef.current.findIndex(f => f.fileId === fileId);
     if (idx !== -1) {
       sendQueueRef.current.splice(idx, 1);
-      updateFile(fileId, { status: 'cancelled' });
+      updateFile(fileId, isError
+        ? { status: 'error', error: reason || 'The receiver could not take this file' }
+        : { status: 'cancelled' });
       if (idx === 0) processSendQueue();
+      settleStatus();
       return;
     }
 
@@ -1077,7 +1130,19 @@ export function useWebRTC(userName: string = '') {
       return;
     }
     // A repeated offer (e.g. re-sent after a reconnect) or a reused id is not a new file.
-    if (receiveBufferRef.current[meta.fileId] || fileStatusRef.current[meta.fileId]) return;
+    if (receiveBufferRef.current[meta.fileId]) return; // still on offer: the user can accept it
+    const known = fileStatusRef.current[meta.fileId];
+    if (known) {
+      // We already settled this file (declined, failed when the old channel
+      // dropped, ...). Answer, so the sender does not wait on it forever with
+      // its whole queue blocked behind it.
+      if (isTerminal(known)) {
+        safeSend(dcRef.current, JSON.stringify(known === 'declined'
+          ? { type: 'file-decline', fileId: meta.fileId }
+          : { type: 'file-cancel', fileId: meta.fileId, reason: 'This file is no longer available on the receiving device; send it again', error: true }));
+      }
+      return;
+    }
 
     receiveBufferRef.current[meta.fileId] = {
       meta,
@@ -1305,6 +1370,18 @@ export function useWebRTC(userName: string = '') {
   }
 
   const sendChatMessage = useCallback((text: string) => {
+    // Same limit the receiving side enforces; it also keeps a relayed message
+    // under the signalling server's frame size limit.
+    if (text.length > MAX_CHAT_LENGTH) {
+      setMessages(prev => [...prev, {
+        id: uuidv4(),
+        senderRole: 'system',
+        text: `Message not sent — it is longer than ${MAX_CHAT_LENGTH.toLocaleString()} characters.`,
+        isSystemMessage: true,
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
     const msg: ChatMessage = { id: uuidv4(), senderRole: roleRef.current || 'system', text, timestamp: Date.now() };
     // Prefer the peer-to-peer data channel: it is DTLS-encrypted between the two
     // devices and never reaches the signalling server. Only fall back to the

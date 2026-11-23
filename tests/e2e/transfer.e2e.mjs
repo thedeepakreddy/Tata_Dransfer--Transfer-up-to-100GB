@@ -305,6 +305,10 @@ test('chat goes over the data channel and is not marked as relayed', { skip, tim
     const bubble = receiver.locator('.row.in', { hasText: 'hello over p2p' });
     await bubble.waitFor();
     assert.doesNotMatch(await bubble.textContent(), /via server relay/);
+    // Over-long messages are refused locally with a notice, not silently lost.
+    await sender.locator('.msg-input').fill('z'.repeat(10001));
+    await sender.getByRole('button', { name: 'Send message' }).click();
+    await sender.locator('.sys-note', { hasText: 'longer than 10,000 characters' }).waitFor();
   } finally {
     await close(sender, receiver);
   }
@@ -344,6 +348,321 @@ test('losing the peer during a call ends it and releases media', { skip, timeout
     await sender.waitForFunction(() =>
       window.__streams.every((s) => s.getTracks().every((t) => t.readyState === 'ended')));
     await sender.locator('.sys-note', { hasText: /connection lost|ended/ }).first().waitFor();
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// Additional coverage: sender disconnect, receiver cancel, chat fallback,
+// session restore, and a scripted (hostile) peer sending malformed, duplicate
+// and out-of-order protocol messages to the real app.
+// ---------------------------------------------------------------------------
+
+test('sender disconnecting mid-transfer fails the transfer on the receiver', { skip, timeout: 90000 }, async () => {
+  const { sender, receiver } = await pair({ receiverInit: [[fakeSavePicker(), {}]] });
+  try {
+    await sendFile(sender, makeFile('sdrop.bin', randomBytes(400 * 1024 * 1024)));
+    await receiver.getByRole('button', { name: 'Accept' }).click();
+    await fileSub(receiver, 'sdrop.bin').filter({ hasText: /receiving — \d+%/ }).waitFor({ timeout: 30000 });
+    await close(sender);
+    await fileSub(receiver, 'sdrop.bin').filter({ hasText: /failed/ }).waitFor({ timeout: 45000 });
+    assert.doesNotMatch(await fileSub(receiver, 'sdrop.bin').textContent(), /received/);
+    await receiver.waitForFunction(() => window.__saved.aborted === true);
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+test('receiver cancellation mid-transfer reaches the sender', { skip, timeout: 90000 }, async () => {
+  const { sender, receiver } = await pair({ receiverInit: [[fakeSavePicker(), {}]] });
+  try {
+    await sendFile(sender, makeFile('rcancel.bin', randomBytes(400 * 1024 * 1024)));
+    await receiver.getByRole('button', { name: 'Accept' }).click();
+    await fileSub(receiver, 'rcancel.bin').filter({ hasText: /receiving — \d+%/ }).waitFor({ timeout: 30000 });
+    await receiver.locator('.file-bubble', { hasText: 'rcancel.bin' }).locator('..').getByRole('button', { name: 'Cancel' }).click();
+    await fileSub(receiver, 'rcancel.bin').filter({ hasText: 'cancelled' }).waitFor({ timeout: 20000 });
+    await fileSub(sender, 'rcancel.bin').filter({ hasText: 'cancelled' }).waitFor({ timeout: 20000 });
+    await receiver.waitForFunction(() => window.__saved.aborted === true);
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+test('chat falls back to the signalling relay without WebRTC and is labelled as relayed', { skip, timeout: 60000 }, async () => {
+  // No peer connection can be created, so the data channel never opens.
+  const noWebRTC = () => {
+    window.RTCPeerConnection = class { constructor() { throw new Error('WebRTC blocked for test'); } };
+  };
+  const { sender, receiver } = await pair({ senderInit: [[noWebRTC]], receiverInit: [[noWebRTC]] });
+  try {
+    await sender.locator('.msg-input').fill('relayed hello');
+    await sender.getByRole('button', { name: 'Send message' }).click();
+    const inBubble = receiver.locator('.row.in', { hasText: 'relayed hello' });
+    await inBubble.waitFor({ timeout: 15000 });
+    assert.match(await inBubble.textContent(), /via server relay/);
+    const outBubble = sender.locator('.row.out', { hasText: 'relayed hello' });
+    assert.match(await outBubble.textContent(), /via server relay/);
+    // The UI no longer claims blanket end-to-end encryption.
+    assert.doesNotMatch(await receiver.locator('.conn-note').textContent(), /End-to-End/i);
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+test('a reloaded sender reclaims its seat with its token and can transfer again', { skip, timeout: 90000 }, async () => {
+  const { sender, receiver } = await pair({ receiverInit: [[fakeSavePicker(), {}]] });
+  try {
+    await sendFile(sender, makeFile('before.txt', Buffer.from('before')));
+    await receiver.getByRole('button', { name: 'Accept' }).click();
+    await fileSub(sender, 'before.txt').filter({ hasText: 'delivered' }).waitFor({ timeout: 20000 });
+    const saved = await sender.evaluate(() => JSON.parse(sessionStorage.getItem('td:session')));
+    assert.ok(saved.token, 'seat token stored for reloads');
+    await sender.reload();
+    // Same room, no "Room is full": the sender lands back in the chat room.
+    await sender.locator('.chat-room-container').waitFor({ timeout: 30000 });
+    assert.equal(await sender.locator('.alert.err').count(), 0);
+    await sendFile(sender, makeFile('after.txt', Buffer.from('after reload')));
+    await receiver.locator('.file-bubble', { hasText: 'after.txt' }).locator('..').getByRole('button', { name: 'Accept' }).click();
+    await fileSub(sender, 'after.txt').filter({ hasText: 'delivered' }).waitFor({ timeout: 30000 });
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+/**
+ * Turn a blank page into a scripted peer speaking the wire protocol directly:
+ * it joins the room over the real signalling server, negotiates a real
+ * RTCPeerConnection, and exposes the data channel as window.__dc and every
+ * received control message in window.__inbox.
+ */
+async function scriptedPeer(roomId, role) {
+  const page = await newPage();
+  await page.goto(`${base}/api/health`);
+  await page.evaluate(({ roomId, role }) => new Promise((resolve, reject) => {
+    window.__inbox = [];
+    const ws = new WebSocket(`ws://${location.host}/signaling`);
+    let pc;
+    const setupDc = (dc) => {
+      dc.binaryType = 'arraybuffer';
+      window.__dc = dc;
+      dc.onmessage = (e) => { if (typeof e.data === 'string') window.__inbox.push(JSON.parse(e.data)); };
+      const opened = () => {
+        dc.send(JSON.stringify({ type: 'name_exchange', userName: 'Script', proto: 2 }));
+        resolve();
+      };
+      if (dc.readyState === 'open') opened(); else dc.onopen = opened;
+    };
+    const makePc = () => {
+      pc = new RTCPeerConnection();
+      pc.onicecandidate = (e) => { if (e.candidate) ws.send(JSON.stringify({ type: 'ice-candidate', payload: e.candidate })); };
+      pc.ondatachannel = (e) => setupDc(e.channel);
+    };
+    ws.onopen = () => ws.send(JSON.stringify({ type: 'join', roomId, role }));
+    ws.onmessage = async (e) => {
+      const msg = JSON.parse(e.data);
+      if (msg.type === 'ready' && msg.isInitiator) {
+        makePc();
+        setupDc(pc.createDataChannel('fileTransfer', { ordered: true }));
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        ws.send(JSON.stringify({ type: 'offer', payload: offer }));
+      } else if (msg.type === 'offer') {
+        makePc();
+        await pc.setRemoteDescription(msg.payload);
+        const answer = await pc.createAnswer();
+        await pc.setLocalDescription(answer);
+        ws.send(JSON.stringify({ type: 'answer', payload: answer }));
+      } else if (msg.type === 'answer') {
+        await pc.setRemoteDescription(msg.payload);
+      } else if (msg.type === 'ice-candidate') {
+        try { await pc.addIceCandidate(msg.payload); } catch { /* ignore */ }
+      } else if (msg.type === 'error') {
+        reject(new Error(msg.message));
+      }
+    };
+    setTimeout(() => reject(new Error('scripted peer never connected')), 20000);
+  }), { roomId, role });
+  return page;
+}
+
+const dcSend = (page, msg) => page.evaluate((m) => window.__dc.send(JSON.stringify(m)), msg);
+const dcSendBytes = (page, n) => page.evaluate((n) => window.__dc.send(new Uint8Array(n).fill(7)), n);
+const inbox = (page) => page.evaluate(() => window.__inbox);
+const waitInbox = (page, pred) => page.waitForFunction(pred, null, { timeout: 15000 });
+
+test('receiver rejects malformed, duplicate, premature and oversized messages from a hostile sender', { skip, timeout: 90000 }, async () => {
+  const room = 'EVIL01';
+  // The scripted sender joins first (so it is the initiator); the real app
+  // joins the same room as receiver.
+  const evilReady = scriptedPeer(room, 'sender');
+  await new Promise((r) => setTimeout(r, 500));
+  const app = await newPage([[fakeSavePicker(), {}]]);
+  const pageErrors = [];
+  app.on('pageerror', (e) => pageErrors.push(e.message));
+  await app.goto(`${base}/?room=${room}`);
+  const evil = await evilReady;
+  try {
+    await app.locator('.chat-room-container').waitFor();
+
+    // Malformed JSON, non-string chat text and a spoofed system notice: no crash, not rendered.
+    await evil.evaluate(() => window.__dc.send('{not json'));
+    await dcSend(evil, { type: 'chat', id: 'bad1', text: { boom: true } });
+    await dcSend(evil, { type: 'chat', id: 'bad2', text: 'spoof', senderRole: 'system', isSystemMessage: true });
+    await dcSend(evil, { type: 'chat', id: 'ok1', text: 'still alive' });
+    await app.locator('.row.in', { hasText: 'still alive' }).waitFor();
+    await app.locator('.row.in', { hasText: 'spoof' }).waitFor(); // shown as a normal peer message...
+    assert.equal(await app.locator('.sys-note', { hasText: 'spoof' }).count(), 0); // ...never as a system notice
+
+    // Invalid offers are ignored.
+    await dcSend(evil, { type: 'meta', fileId: 'neg', name: 'neg.bin', size: -5, mimeType: 'x/y' });
+    await dcSend(evil, { type: 'meta', fileId: '../../x', name: 'id.bin', size: 5, mimeType: 'x/y' });
+    await dcSend(evil, { type: 'meta', fileId: 'nan', name: 'nan.bin', size: 'lots', mimeType: 'x/y' });
+
+    // Overflow: path-traversal name, duplicate offer, chunks before accept, then too many bytes.
+    await dcSend(evil, { type: 'meta', fileId: 'f1', name: '../../evil‮gpj.sh', size: 10, mimeType: 'text/plain' });
+    await dcSend(evil, { type: 'meta', fileId: 'f1', name: 'dup.sh', size: 10, mimeType: 'text/plain' });
+    await dcSendBytes(evil, 10); // before acceptance: must be dropped, not counted
+    const f1 = app.locator('.file-bubble', { hasText: 'evilgpj.sh' });
+    await f1.waitFor();
+    assert.equal(await app.locator('.file-bubble', { hasText: 'dup.sh' }).count(), 0);
+    assert.equal(await app.locator('.file-bubble', { hasText: /neg\.bin|id\.bin|nan\.bin/ }).count(), 0);
+    await f1.locator('..').getByRole('button', { name: 'Accept' }).click();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-accept' && m.fileId === 'f1'));
+    await dcSendBytes(evil, 20);
+    await f1.locator('.file-sub').filter({ hasText: /failed — Received more data/ }).waitFor();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-cancel' && m.fileId === 'f1' && m.error === true));
+
+    // Short file: EOF before all bytes -> failed, sender gets a negative ack.
+    await dcSend(evil, { type: 'meta', fileId: 'f2', name: 'short.bin', size: 8, mimeType: 'x/y' });
+    const f2 = app.locator('.file-bubble', { hasText: 'short.bin' });
+    await f2.locator('..').getByRole('button', { name: 'Accept' }).click();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-accept' && m.fileId === 'f2'));
+    await dcSendBytes(evil, 4);
+    await dcSend(evil, { type: 'eof', fileId: 'f2' });
+    await f2.locator('.file-sub').filter({ hasText: /failed — Incomplete file/ }).waitFor();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-ack' && m.fileId === 'f2' && m.ok === false));
+
+    // Good file with a duplicate EOF and a stray EOF for an unknown id: exactly one positive ack.
+    await dcSend(evil, { type: 'meta', fileId: 'f3', name: 'good.bin', size: 4, mimeType: 'x/y' });
+    const f3 = app.locator('.file-bubble', { hasText: 'good.bin' });
+    await f3.locator('..').getByRole('button', { name: 'Accept' }).click();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-accept' && m.fileId === 'f3'));
+    await dcSendBytes(evil, 4);
+    await dcSend(evil, { type: 'eof', fileId: 'f3' });
+    await dcSend(evil, { type: 'eof', fileId: 'f3' });
+    await dcSend(evil, { type: 'eof', fileId: 'nope' });
+    await f3.locator('.file-sub').filter({ hasText: 'received' }).waitFor();
+    await new Promise((r) => setTimeout(r, 500));
+    const acks = (await inbox(evil)).filter((m) => m.type === 'file-ack' && m.fileId === 'f3');
+    assert.deepEqual(acks, [{ type: 'file-ack', fileId: 'f3', ok: true, bytes: 4 }]);
+    // A late duplicate meta for a finished file does not create a new offer.
+    await dcSend(evil, { type: 'meta', fileId: 'f3', name: 'again.bin', size: 4, mimeType: 'x/y' });
+    await new Promise((r) => setTimeout(r, 300));
+    assert.equal(await app.locator('.file-bubble', { hasText: 'again.bin' }).count(), 0);
+
+    // Re-offering a file the receiver already failed or declined is answered,
+    // so a sender re-offering after a reconnect is never left waiting forever.
+    await dcSend(evil, { type: 'meta', fileId: 'f1', name: 'retry.bin', size: 10, mimeType: 'x/y' });
+    await waitInbox(evil, () => window.__inbox.filter((m) => m.type === 'file-cancel' && m.fileId === 'f1').length >= 2);
+    await dcSend(evil, { type: 'meta', fileId: 'f4', name: 'nothanks.bin', size: 4, mimeType: 'x/y' });
+    await app.locator('.file-bubble', { hasText: 'nothanks.bin' }).locator('..').getByRole('button', { name: 'Decline' }).click();
+    await waitInbox(evil, () => window.__inbox.some((m) => m.type === 'file-decline' && m.fileId === 'f4'));
+    await dcSend(evil, { type: 'meta', fileId: 'f4', name: 'nothanks.bin', size: 4, mimeType: 'x/y' });
+    await waitInbox(evil, () => window.__inbox.filter((m) => m.type === 'file-decline' && m.fileId === 'f4').length >= 2);
+
+    assert.deepEqual(pageErrors, []);
+  } finally {
+    await close(evil, app);
+  }
+});
+
+test('sender rejects an invalid acknowledgment and ignores duplicate or late acks from a hostile receiver', { skip, timeout: 90000 }, async () => {
+  const sender = await newPage();
+  await sender.goto(base);
+  await sender.locator('.loader-screen').waitFor({ state: 'detached' });
+  await sender.getByRole('button', { name: /Send files/ }).click();
+  const pin = sender.locator('.pin-box strong');
+  await pin.filter({ hasText: /^[0-9A-F]{6}$/ }).waitFor();
+  const evil = await scriptedPeer(await pin.textContent(), 'receiver');
+  try {
+    await sender.locator('.chat-room-container').waitFor();
+    const accept = async (name) => {
+      await evil.waitForFunction((n) => window.__inbox.some((m) => m.type === 'meta' && m.name === n), name, { timeout: 15000 });
+      const meta = (await inbox(evil)).find((m) => m.type === 'meta' && m.name === name);
+      await dcSend(evil, { type: 'file-accept', fileId: meta.fileId });
+      await dcSend(evil, { type: 'file-accept', fileId: meta.fileId }); // duplicate accept: harmless
+      await evil.waitForFunction((id) => window.__inbox.some((m) => m.type === 'eof' && m.fileId === id), meta.fileId, { timeout: 15000 });
+      return meta;
+    };
+
+    // Wrong byte count in a positive ack -> failure, not "delivered".
+    await sendFile(sender, makeFile('lie.bin', randomBytes(1000)));
+    const m1 = await accept('lie.bin');
+    await dcSend(evil, { type: 'file-ack', fileId: m1.fileId, ok: true, bytes: 999 });
+    await fileSub(sender, 'lie.bin').filter({ hasText: /failed — Receiver confirmed a different size/ }).waitFor();
+    // A later "correct" ack cannot revive it.
+    await dcSend(evil, { type: 'file-ack', fileId: m1.fileId, ok: true, bytes: 1000 });
+    await new Promise((r) => setTimeout(r, 300));
+    assert.match(await fileSub(sender, 'lie.bin').textContent(), /failed/);
+
+    // Before the ack the sender says it is waiting, not delivered.
+    await sendFile(sender, makeFile('fine.bin', randomBytes(2000)));
+    const m2 = await accept('fine.bin');
+    await fileSub(sender, 'fine.bin').filter({ hasText: 'waiting for confirmation' }).waitFor();
+    await dcSend(evil, { type: 'file-ack', fileId: 'unknown', ok: true, bytes: 2000 }); // stray ack
+    await dcSend(evil, { type: 'file-ack', fileId: m2.fileId, ok: true, bytes: 2000 });
+    await dcSend(evil, { type: 'file-ack', fileId: m2.fileId, ok: false, reason: 'late' }); // late contradicting ack
+    await fileSub(sender, 'fine.bin').filter({ hasText: 'delivered' }).waitFor();
+    await new Promise((r) => setTimeout(r, 300));
+    assert.match(await fileSub(sender, 'fine.bin').textContent(), /delivered/);
+  } finally {
+    await close(evil, sender);
+  }
+});
+
+test('when the other device leaves, the remaining side shows disconnected promptly', { skip, timeout: 60000 }, async () => {
+  const { sender, receiver } = await pair();
+  try {
+    await sendFile(sender, makeFile('hi.txt', Buffer.from('hi')));
+    await fileSub(receiver, 'hi.txt').waitFor();
+    await receiver.getByRole('button', { name: 'Back' }).click();
+    // Well under the 20 s grace period: driven by the data channel closing.
+    await sender.locator('.peer-status', { hasText: 'Disconnected' }).waitFor({ timeout: 8000 });
+  } finally {
+    await close(sender, receiver);
+  }
+});
+
+test('a sender whose tab died without closing its connection is re-paired with a fresh handshake', { skip, timeout: 90000 }, async () => {
+  const { sender, receiver } = await pair({ receiverInit: [[fakeSavePicker(), {}]] });
+  try {
+    await sendFile(sender, makeFile('one.txt', Buffer.from('one')));
+    await receiver.getByRole('button', { name: 'Accept' }).click();
+    await fileSub(sender, 'one.txt').filter({ hasText: 'delivered' }).waitFor({ timeout: 20000 });
+    const session = await sender.evaluate(() => sessionStorage.getItem('td:session'));
+
+    // Crash the renderer: no clean WebRTC shutdown, so the receiver's data
+    // channel keeps reporting 'open' (like an OS-discarded mobile tab).
+    const cdp = await sender.context().newCDPSession(sender);
+    // The crashed page never answers, so don't wait for a reply.
+    await Promise.race([cdp.send('Page.crash').catch(() => {}), new Promise((r) => setTimeout(r, 2000))]);
+    await close(sender);
+
+    // The "reopened" tab: same saved session (room + seat token), new page load.
+    const reopened = await newPage([[(s) => sessionStorage.setItem('td:session', s), session]]);
+    try {
+      await reopened.goto(base);
+      await reopened.locator('.chat-room-container').waitFor({ timeout: 30000 });
+      const t0 = Date.now();
+      await sendFile(reopened, makeFile('two.txt', Buffer.from('two after reopen')));
+      await receiver.locator('.file-bubble', { hasText: 'two.txt' }).locator('..').getByRole('button', { name: 'Accept' }).click();
+      await fileSub(reopened, 'two.txt').filter({ hasText: 'delivered' }).waitFor({ timeout: 30000 });
+      // Recovered by the new handshake, not by waiting out ICE timeouts.
+      assert.ok(Date.now() - t0 < 15000, `took ${Date.now() - t0} ms`);
+    } finally {
+      await close(reopened);
+    }
   } finally {
     await close(sender, receiver);
   }

@@ -181,7 +181,7 @@ export function parseControlMessage(data: string): Record<string, any> | null {
   }
 }
 
-const MAX_CHAT_LENGTH = 10000;
+export const MAX_CHAT_LENGTH = 10000;
 
 /** Validate a peer chat message. The peer decides only id/text/timestamp; never role or system flags. */
 export function validateChatPayload(raw: unknown): { id: string; text: string; timestamp: number } | null {

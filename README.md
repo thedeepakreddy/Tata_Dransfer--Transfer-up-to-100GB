@@ -62,7 +62,7 @@ npm test           # signalling server + transfer protocol tests (Node's built-i
 npm run build && npm run test:e2e   # real two-browser tests (needs Playwright + Chromium installed)
 ```
 
-The end-to-end suite starts the production server and drives two headless Chromium pages over a real WebRTC data channel. It covers successful transfers (byte-for-byte checked), zero-byte files, the in-memory download fallback, receiver disk-write failure, decline, cancellation, a receiver disconnecting mid-transfer, chat over the data channel, and call teardown. Playwright is not a package dependency, so the suite skips itself if it is not installed.
+The end-to-end suite starts the production server and drives two headless Chromium pages over a real WebRTC data channel. It covers successful transfers (byte-for-byte checked), zero-byte files, the in-memory download fallback, receiver disk-write failure, decline, cancellation from either side, either device disconnecting mid-transfer, chat over the data channel and through the relay fallback, reload and crashed-tab recovery, call teardown, and scripted hostile peers sending malformed, duplicate and out-of-order protocol messages. Playwright is not a package dependency, so the suite skips itself if it is not installed.
 
 ## Security and Privacy
 

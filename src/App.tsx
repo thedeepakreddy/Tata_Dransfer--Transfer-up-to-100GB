@@ -36,7 +36,15 @@ export default function App() {
     const params = new URLSearchParams(window.location.search);
     if (params.has('room')) {
       setScreen('receiver');
+      return;
     }
+    // A sender whose page was reloaded or discarded mid-session goes straight
+    // back to its room (Sender resumes it from sessionStorage). Leaving the
+    // room on purpose clears this entry, so a deliberate exit stays on home.
+    try {
+      const saved = JSON.parse(sessionStorage.getItem('td:session') || 'null');
+      if (saved?.role === 'sender' && typeof saved.room === 'string') setScreen('sender');
+    } catch { /* private mode or corrupt entry */ }
   }, []);
 
   return (

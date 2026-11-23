@@ -379,8 +379,10 @@ export function useCallManager(
         // Only the caller acts on an accept, and only while still ringing.
         if (!isCallerRef.current || callStateRef.current !== 'ringing') return;
         enterCallState('connecting');
+        let mediaReady = false;
         acquireMedia(callModeRef.current)
           .then(async (stream) => {
+            mediaReady = true;
             if (!pcRef.current) throw new Error('no-peer-connection');
             attachMediaToConnection(stream);
             const offer = await pcRef.current.createOffer();
@@ -391,9 +393,12 @@ export function useCallManager(
             if (err?.message === 'call-no-longer-active') return; // ended meanwhile
             console.error('Could not start the call', err);
             sendCallSignal('call-end');
-            failCall(err?.message === 'no-peer-connection'
-              ? 'Call failed — not connected to the other device.'
-              : 'Call failed — camera or microphone unavailable.');
+            // Only blame the camera/mic when acquiring them is what failed.
+            failCall(!mediaReady
+              ? 'Call failed — camera or microphone unavailable.'
+              : err?.message === 'no-peer-connection'
+                ? 'Call failed — not connected to the other device.'
+                : 'Call failed — could not set up the call connection.');
           });
         break;
       }
@@ -466,16 +471,20 @@ export function useCallManager(
   const acceptCall = useCallback(async () => {
     if (callStateRef.current !== 'incoming') return;
     enterCallState('connecting');
+    let mediaReady = false;
     try {
       const stream = await acquireMedia(callModeRef.current);
+      mediaReady = true;
       attachMediaToConnection(stream);
       sendCallSignal('call-accept');
     } catch (err: any) {
       if (err?.message === 'call-no-longer-active') return; // caller hung up meanwhile
-      // Most often the user denied the camera/microphone prompt.
-      console.error('Could not start local media for call', err);
+      console.error('Could not start the call', err);
       sendCallSignal('call-reject');
-      failCall('Call declined — camera or microphone unavailable.');
+      // Most often the user denied the camera/microphone prompt.
+      failCall(mediaReady
+        ? 'Call failed — could not set up the call connection.'
+        : 'Call declined — camera or microphone unavailable.');
     }
   }, [acquireMedia, attachMediaToConnection, sendCallSignal, enterCallState, failCall]);
 

@@ -138,10 +138,47 @@ test('same-role replacement requires the seat token', async () => {
   const again = await client();
   join(again, 'ROOM01', 'sender', aToken);
   const joined = await waitFor(again, (m) => m.type === 'joined');
-  assert.equal(joined.token, aToken);
   await waitFor(again, (m) => m.type === 'ready');
   assert.equal(await a.closed, 1006); // terminated
   assert.equal(core.rooms.get('ROOM01').peers.size, 2);
+  // The token rotates on reclaim, so the old one is now worthless.
+  assert.notEqual(joined.token, aToken);
+  const replay = await client();
+  join(replay, 'ROOM01', 'sender', aToken);
+  assert.equal((await waitFor(replay, (m) => m.type === 'error')).code, 'ROOM_FULL');
+  assert.equal(again.readyState, WebSocket.OPEN);
+});
+
+test('two tabs sharing one token cannot keep kicking each other out', async () => {
+  const { aToken } = await pair();
+  // Tab B (a duplicate) reclaims with the shared token...
+  const tabB = await client();
+  join(tabB, 'ROOM01', 'sender', aToken);
+  await waitFor(tabB, (m) => m.type === 'joined');
+  // ...and tab A, reconnecting with the same old token, is refused instead of
+  // evicting B in turn.
+  const tabA = await client();
+  join(tabA, 'ROOM01', 'sender', aToken);
+  assert.equal((await waitFor(tabA, (m) => m.type === 'error')).code, 'ROOM_FULL');
+  await tick();
+  assert.equal(tabB.readyState, WebSocket.OPEN);
+});
+
+test("ready carries the other peer's page session id", async () => {
+  const a = await client();
+  sendJson(a, { type: 'join', roomId: 'ROOMSS', role: 'sender', sessionId: 'sessionAAAA' });
+  await waitFor(a, (m) => m.type === 'joined');
+  const b = await client();
+  sendJson(b, { type: 'join', roomId: 'ROOMSS', role: 'receiver', sessionId: 'sessionBBBB' });
+  assert.equal((await waitFor(a, (m) => m.type === 'ready')).peerSessionId, 'sessionBBBB');
+  assert.equal((await waitFor(b, (m) => m.type === 'ready')).peerSessionId, 'sessionAAAA');
+  // Invalid ids are dropped rather than relayed.
+  const c = await client();
+  sendJson(c, { type: 'join', roomId: 'ROOMS2', role: 'sender', sessionId: '<script>' });
+  await waitFor(c, (m) => m.type === 'joined');
+  const d = await client();
+  sendJson(d, { type: 'join', roomId: 'ROOMS2', role: 'receiver' });
+  assert.equal((await waitFor(d, (m) => m.type === 'ready')).peerSessionId, undefined);
 });
 
 test('replacing a stale peer does not send a spurious peer-disconnected', async () => {
