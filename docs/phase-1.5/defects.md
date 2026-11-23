@@ -58,7 +58,7 @@ Every entry here was reproduced in this environment, or is a limitation measured
 ## D4: Intermittent failure of the sender-reload test (E2E-14)
 
 *   **Observation:** in the first full `npm run test:e2e` run after the D2/D3 changes, E2E-14 ("a reloaded sender reclaims its seat…") failed once. The run output was filtered to pass/fail lines, so **the failure detail was not captured**.
-*   **Reproduction attempts:** see `test-results.md` §D4. E2E-14 alone (3 + 15 runs), alone under CPU stress (12 runs), and full-suite runs (2 plain + 3 with page-console capture) did not fail again.
+*   **Reproduction attempts:** see `test-results.md` §D4. E2E-14 alone (3 + 15 runs), alone under CPU stress (12 runs), and full-suite runs (2 plain + 3 with page-console capture) did not fail again: **1 failure in 36 executions**.
 *   **Assessment:** about 1 failure in 35+ executions, root cause **not identified**. Neither D2 (display) nor D3 (chat path) is on the code path the test exercises (reload → seat reclaim → fresh handshake → file transfer). It may be a timing race in the reload / re-handshake path that already existed, or a test-timing issue. **It is not claimed to be either.**
 *   **Status:** open. If it recurs, the console-capturing variant of the suite (see `test-results.md` §D4) should be used to collect evidence. The owner reload tests (guide §3.3) cover this path on real devices.
 

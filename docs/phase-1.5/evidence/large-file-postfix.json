@@ -1,0 +1,294 @@
+{
+  "env": {
+    "chromium": "Google Chrome for Testing 153.0.8010.12",
+    "node": "v22.23.5",
+    "os": "linux 6.18.44-fc-v726",
+    "cpus": 4,
+    "memGiB": 16,
+    "network": "loopback only (single machine; no external network in this sandbox)",
+    "commit": "0bd452e",
+    "dirty": false
+  },
+  "results": [
+    {
+      "sizeBytes": 1073741824,
+      "sizeMiB": 1024,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T21:20:11.379Z",
+      "sourceSha256": "8aeaec64f850a45e51a8feaf06bc207d5f06fafa59543bb2a356a11abe2196ae",
+      "generateMs": 1600,
+      "receiverStatusText": "1 GB · received",
+      "senderStatusText": "1 GB · delivered",
+      "receiverCompleteSec": 30.669,
+      "senderDeliveredSec": 30.669,
+      "timedOut": false,
+      "throughputMiBps": 33.4,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local network",
+      "peak": {
+        "senderHeapMiB": 4.6,
+        "receiverHeapMiB": 4.6,
+        "senderRssMiB": 612.8,
+        "receiverRssMiB": 594.1,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 4.6,
+          "receiverHeapMiB": 4.6,
+          "senderRssMiB": 567.8,
+          "receiverRssMiB": 544.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 587.9,
+          "receiverRssMiB": 558.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 612.8,
+          "receiverRssMiB": 594.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 569.3,
+          "receiverRssMiB": 577.3,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 6.1,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 583.8,
+          "receiverRssMiB": 540.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 7.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 532.4,
+          "receiverRssMiB": 545,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 8.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 547,
+          "receiverRssMiB": 557.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 9.2,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 559.8,
+          "receiverRssMiB": 567.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 10.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 569.6,
+          "receiverRssMiB": 578.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 11.2,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 584,
+          "receiverRssMiB": 526.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 12.2,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 528.4,
+          "receiverRssMiB": 533.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 13.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 539.8,
+          "receiverRssMiB": 542.7,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 14.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 555.9,
+          "receiverRssMiB": 556.5,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 15.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 575.5,
+          "receiverRssMiB": 574.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 16.3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 525.2,
+          "receiverRssMiB": 523.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 17.4,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 541.1,
+          "receiverRssMiB": 538.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 18.4,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 555.8,
+          "receiverRssMiB": 550.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 19.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 568.2,
+          "receiverRssMiB": 561.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 20.4,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 586.7,
+          "receiverRssMiB": 578.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 21.5,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 533.3,
+          "receiverRssMiB": 523.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 22.5,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 528.2,
+          "receiverRssMiB": 577,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 23.5,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 580.7,
+          "receiverRssMiB": 563.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 24.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 560.5,
+          "receiverRssMiB": 546.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 25.6,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 541.1,
+          "receiverRssMiB": 526.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 26.6,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 552.6,
+          "receiverRssMiB": 536.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 27.6,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 571.4,
+          "receiverRssMiB": 553.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 28.6,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 586.7,
+          "receiverRssMiB": 566.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 29.7,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 532.9,
+          "receiverRssMiB": 579.1,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 30.7,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.6,
+          "senderRssMiB": 532.4,
+          "receiverRssMiB": 580.8,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 1024,
+        "bytes": 1073741824,
+        "closed": true,
+        "aborted": false,
+        "name": "1795468817699-synthetic-1073741824.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "8aeaec64f850a45e51a8feaf06bc207d5f06fafa59543bb2a356a11abe2196ae",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T21:20:47.638Z"
+    }
+  ]
+}

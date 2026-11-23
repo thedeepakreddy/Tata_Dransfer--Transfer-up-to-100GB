@@ -89,6 +89,7 @@ Coverage within BR-01 for the Stage 1 items:
 | LF-08 | 100 MiB | in-memory fallback | 66cc33c77b7e7edf | 66cc33c77b7e7edf (download) | ✅ | ✅ | 5.1 | 19.7 | 4.7 / 4.5 | 595 / **731** | host/host udp | PASS (see L-A) |
 | LF-09 | 500 MiB | in-memory fallback | b9addb3587841777 | b9addb3587841777 | ✅ | ✅ | 15.3 | 32.7 | 4.6 / 5.7 | 599 / **1,543** | host/host udp | PASS (see L-A) |
 | LF-10 | 1 GiB | in-memory fallback | 8aeaec64f850a45e | 8aeaec64f850a45e | ✅ | ✅ | 27.5 | 37.2 | 4.8 / 7.7 | 592 / **2,613** | host/host udp | PASS (see L-A) |
+| LF-12 | 1 GiB | disk, **final code `0bd452e`, clean tree** | 8aeaec64f850a45e | 8aeaec64f850a45e | ✅ | ✅ | 30.7 | 33.4 | 4.6 / 4.6 | 613 / 594 | host/host udp | PASS: UI label now `Connected · Local network` (D2) |
 | LF-11 | 400 MiB | disk, writes throttled to 8 MiB/s | f843c2b137bb919f | f843c2b137bb919f | ✅ | ✅ | 54.9 | 7.3 | 4.7 / 4.8 | 582 / **845** | host/host udp | PASS (see L-B) |
 
 Observations:
@@ -143,7 +144,7 @@ Other Stage 4 items are covered by the regression suite (§5): sender/receiver d
 | `npm run lint` | PASS |
 | `npm test` | **35/35** (19 server + 12 protocol + 4 new path-classification tests) |
 | `npm run build` | PASS |
-| `npm run test:e2e` | Run 1 after fixes: **17/18**, E2E-14 failed (detail not captured; see D4). Runs 2–3: 18/18 |
+| `npm run test:e2e` | Run 1 after fixes: **17/18**, E2E-14 failed (detail not captured; see D4). Runs 2–3: 18/18. 3 further runs with console capture: 18/18 each |
 | `npm run test:validation` | **10/10** |
 
 ## D4. Reproduction attempts for the E2E-14 intermittent failure
@@ -155,7 +156,8 @@ Other Stage 4 items are covered by the regression suite (§5): sender/receiver d
 | E2E-14 alone, loop | 15 | 0 |
 | E2E-14 alone, 4 CPU-burning processes, page-console capture | 12 | 0 |
 | Full suite (plain) | 2 | 0 |
-| Full suite with page-console capture (`transfer.debug` copy, scratch only) | PENDING | PENDING |
+| Full suite with page-console capture (scratch copy, not committed) | 3 | 0 |
+| **Total** | **36** | **1** |
 
 ## 8. Owner-run results
 

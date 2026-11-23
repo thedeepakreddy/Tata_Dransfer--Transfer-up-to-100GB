@@ -4,7 +4,7 @@
 
 ## 1. Executive summary
 
-*   **Transfer integrity.** 11 graduated large-file runs, **100 MiB up to 8 GiB**, all passed. Each run met four checks:
+*   **Transfer integrity.** 12 large-file runs, **100 MiB up to 8 GiB**, all passed. Each run met four checks:
     *   the SHA-256 of the bytes **actually written to disk** matched the source;
     *   the receiver acknowledged the file;
     *   the sender showed *delivered* only after that acknowledgment;
@@ -67,7 +67,7 @@
 *   B-01…B-06 baseline
 *   E2E-01…18 (three or more full runs)
 *   L1…L10
-*   LF-01…LF-11 (LF-12 post-fix confirmation: **pending**)
+*   LF-01…LF-12 (LF-12 = 1 GiB on the final code, PASS)
 *   35 unit / server tests
 *   D4 reproduction attempts
 
@@ -96,7 +96,7 @@ Details and commands: `test-results.md`.
 *   `…/large-file-opfs-4g-8g.json`: 4 GiB, 8 GiB
 *   `…/large-file-memory-fallback.json`: 100 MiB, 500 MiB, 1 GiB in-memory
 *   `…/large-file-slow-disk.json`: 400 MiB at 8 MiB/s
-*   `…/large-file-postfix.json`: 1 GiB confirmation on the final code (LF-12, **pending**, not yet run)
+*   `…/large-file-postfix.json`: 1 GiB confirmation on the final code `0bd452e` (LF-12, PASS)
 
 Each JSON holds environment, hashes, timings, per-second memory samples, the selected ICE pair and the UI label. No credentials, IPs or file contents are recorded. The synthetic data was deleted after each run.
 
