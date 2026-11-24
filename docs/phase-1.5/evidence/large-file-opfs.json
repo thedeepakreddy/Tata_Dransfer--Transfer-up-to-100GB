@@ -1,0 +1,1238 @@
+{
+  "env": {
+    "chromium": "Google Chrome for Testing 153.0.8010.12",
+    "node": "v22.23.5",
+    "os": "linux 6.18.44-fc-v726",
+    "cpus": 4,
+    "memGiB": 16,
+    "network": "loopback only (single machine; no external network in this sandbox)",
+    "commit": "2b56ca2",
+    "dirty": true
+  },
+  "results": [
+    {
+      "sizeBytes": 104857600,
+      "sizeMiB": 100,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T20:39:44.514Z",
+      "sourceSha256": "66cc33c77b7e7edfc8e786aaa889b7f55596c37f777e2156b9d953e0a8969dda",
+      "generateMs": 172,
+      "receiverStatusText": "100 MB · received",
+      "senderStatusText": "100 MB · delivered",
+      "receiverCompleteSec": 5.05,
+      "senderDeliveredSec": 5.05,
+      "timedOut": false,
+      "throughputMiBps": 19.8,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local WiFi",
+      "peak": {
+        "senderHeapMiB": 5.1,
+        "receiverHeapMiB": 4.6,
+        "senderRssMiB": 609.8,
+        "receiverRssMiB": 583.9,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 5.1,
+          "receiverHeapMiB": 4.6,
+          "senderRssMiB": 565,
+          "receiverRssMiB": 531.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 588.3,
+          "receiverRssMiB": 548.9,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 609.8,
+          "receiverRssMiB": 583.9,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 565.6,
+          "receiverRssMiB": 565.1,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 100,
+        "bytes": 104857600,
+        "closed": true,
+        "aborted": false,
+        "name": "1795466389480-synthetic-104857600.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "66cc33c77b7e7edfc8e786aaa889b7f55596c37f777e2156b9d953e0a8969dda",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T20:39:52.745Z"
+    },
+    {
+      "sizeBytes": 419430400,
+      "sizeMiB": 400,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T20:39:52.745Z",
+      "sourceSha256": "f843c2b137bb919f7f7a7018f32f822a8fb8ffb492f7212fcec28d41a50487f7",
+      "generateMs": 570,
+      "receiverStatusText": "400 MB · received",
+      "senderStatusText": "400 MB · delivered",
+      "receiverCompleteSec": 14.251,
+      "senderDeliveredSec": 14.251,
+      "timedOut": false,
+      "throughputMiBps": 28.1,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local WiFi",
+      "peak": {
+        "senderHeapMiB": 4.9,
+        "receiverHeapMiB": 4.7,
+        "senderRssMiB": 603,
+        "receiverRssMiB": 581.6,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 4.7,
+          "receiverHeapMiB": 4.7,
+          "senderRssMiB": 561.3,
+          "receiverRssMiB": 537.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4.9,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 571.1,
+          "receiverRssMiB": 558.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 603,
+          "receiverRssMiB": 570.2,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 539.4,
+          "receiverRssMiB": 538.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 6.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 556,
+          "receiverRssMiB": 567.7,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 7.1,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 569.7,
+          "receiverRssMiB": 581.6,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 8.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 545.3,
+          "receiverRssMiB": 554.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 9.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 532.7,
+          "receiverRssMiB": 542,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 10.2,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 543,
+          "receiverRssMiB": 553.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 11.2,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 555.1,
+          "receiverRssMiB": 565.5,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 12.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 569.8,
+          "receiverRssMiB": 576,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 13.2,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 580.8,
+          "receiverRssMiB": 520.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 14.3,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 579.8,
+          "receiverRssMiB": 521.4,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 400,
+        "bytes": 419430400,
+        "closed": true,
+        "aborted": false,
+        "name": "1795466398262-synthetic-419430400.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "f843c2b137bb919f7f7a7018f32f822a8fb8ffb492f7212fcec28d41a50487f7",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T20:40:10.966Z"
+    },
+    {
+      "sizeBytes": 524288000,
+      "sizeMiB": 500,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T20:40:10.967Z",
+      "sourceSha256": "b9addb358784177781d31e81978565a6cd9abc268045be1955b11a41c692493b",
+      "generateMs": 691,
+      "receiverStatusText": "500 MB · received",
+      "senderStatusText": "500 MB · delivered",
+      "receiverCompleteSec": 16.35,
+      "senderDeliveredSec": 16.35,
+      "timedOut": false,
+      "throughputMiBps": 30.6,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local WiFi",
+      "peak": {
+        "senderHeapMiB": 4.7,
+        "receiverHeapMiB": 4.5,
+        "senderRssMiB": 586.6,
+        "receiverRssMiB": 602.7,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 4.7,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 567.9,
+          "receiverRssMiB": 549.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.8,
+          "senderRssMiB": 586.6,
+          "receiverRssMiB": 558.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 4.1,
+          "senderHeapMiB": 3.9,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 558.4,
+          "receiverRssMiB": 602.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 538,
+          "receiverRssMiB": 548.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 6.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 551.1,
+          "receiverRssMiB": 570.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 7.1,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 562.5,
+          "receiverRssMiB": 577.7,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 8.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 578.6,
+          "receiverRssMiB": 524.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 9.2,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 527.4,
+          "receiverRssMiB": 538.3,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 10.2,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 537.7,
+          "receiverRssMiB": 547.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 11.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 554.3,
+          "receiverRssMiB": 564.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 12.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 569.3,
+          "receiverRssMiB": 576.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 13.3,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 580.9,
+          "receiverRssMiB": 521.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 14.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 565.1,
+          "receiverRssMiB": 569.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 15.3,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 578,
+          "receiverRssMiB": 581.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 16.4,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 519.3,
+          "receiverRssMiB": 529.2,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 500,
+        "bytes": 524288000,
+        "closed": true,
+        "aborted": false,
+        "name": "1795466416478-synthetic-524288000.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "b9addb358784177781d31e81978565a6cd9abc268045be1955b11a41c692493b",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T20:40:31.288Z"
+    },
+    {
+      "sizeBytes": 1073741824,
+      "sizeMiB": 1024,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T20:40:31.288Z",
+      "sourceSha256": "8aeaec64f850a45e51a8feaf06bc207d5f06fafa59543bb2a356a11abe2196ae",
+      "generateMs": 1317,
+      "receiverStatusText": "1 GB · received",
+      "senderStatusText": "1 GB · delivered",
+      "receiverCompleteSec": 31.709,
+      "senderDeliveredSec": 31.709,
+      "timedOut": false,
+      "throughputMiBps": 32.3,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local WiFi",
+      "peak": {
+        "senderHeapMiB": 4.8,
+        "receiverHeapMiB": 4.8,
+        "senderRssMiB": 602.6,
+        "receiverRssMiB": 592.5,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 4.8,
+          "receiverHeapMiB": 4.8,
+          "senderRssMiB": 563.7,
+          "receiverRssMiB": 545.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.8,
+          "senderRssMiB": 579.8,
+          "receiverRssMiB": 556.2,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 602.6,
+          "receiverRssMiB": 592.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 584.4,
+          "receiverRssMiB": 538.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 6.1,
+          "senderHeapMiB": 3.9,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 528.9,
+          "receiverRssMiB": 555.2,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 7.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 544.1,
+          "receiverRssMiB": 563.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 8.1,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 559.7,
+          "receiverRssMiB": 579.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 9.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 569.5,
+          "receiverRssMiB": 523,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 10.2,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 574.2,
+          "receiverRssMiB": 527.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 11.2,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 583.8,
+          "receiverRssMiB": 534.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 12.2,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 524.3,
+          "receiverRssMiB": 538.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 13.3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 528.5,
+          "receiverRssMiB": 542.8,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 14.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 544.4,
+          "receiverRssMiB": 556.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 15.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 560.2,
+          "receiverRssMiB": 569.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 16.3,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 576.5,
+          "receiverRssMiB": 546.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 17.4,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 525.4,
+          "receiverRssMiB": 531.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 18.4,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 535.6,
+          "receiverRssMiB": 537.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 19.4,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 546.7,
+          "receiverRssMiB": 547.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 20.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 550.4,
+          "receiverRssMiB": 551.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 21.5,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 534.3,
+          "receiverRssMiB": 534.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 22.5,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 522.1,
+          "receiverRssMiB": 523.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 23.5,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 530.6,
+          "receiverRssMiB": 528.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 24.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 552.5,
+          "receiverRssMiB": 546.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 25.6,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 564.6,
+          "receiverRssMiB": 556.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 26.6,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 566.1,
+          "receiverRssMiB": 554,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 27.6,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 563.5,
+          "receiverRssMiB": 555.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 28.7,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 557.8,
+          "receiverRssMiB": 541.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 29.7,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 566,
+          "receiverRssMiB": 553.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 30.7,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 582,
+          "receiverRssMiB": 567.9,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 31.7,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 530.5,
+          "receiverRssMiB": 519.4,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 1024,
+        "bytes": 1073741824,
+        "closed": true,
+        "aborted": false,
+        "name": "1795466437361-synthetic-1073741824.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "8aeaec64f850a45e51a8feaf06bc207d5f06fafa59543bb2a356a11abe2196ae",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T20:41:08.339Z"
+    },
+    {
+      "sizeBytes": 2147483648,
+      "sizeMiB": 2048,
+      "mode": "opfs",
+      "throttleBytesPerSec": null,
+      "fileType": "application/octet-stream (deterministic AES-256-CTR keystream)",
+      "startedAt": "2026-11-23T20:41:08.340Z",
+      "sourceSha256": "103f11474b7553a24fc7418c64b6a97088c39647541abfacfd897ec805e96ab5",
+      "generateMs": 3105,
+      "receiverStatusText": "2 GB · received",
+      "senderStatusText": "2 GB · delivered",
+      "receiverCompleteSec": 63.568,
+      "senderDeliveredSec": 63.568,
+      "timedOut": false,
+      "throughputMiBps": 32.2,
+      "receiverAcknowledged": true,
+      "selectedPath": {
+        "local": "host",
+        "remote": "host",
+        "protocol": "udp",
+        "localAddressKind": "other"
+      },
+      "uiConnectionLabel": "Connected · Local WiFi",
+      "peak": {
+        "senderHeapMiB": 5.4,
+        "receiverHeapMiB": 4.6,
+        "senderRssMiB": 606.5,
+        "receiverRssMiB": 588.3,
+        "receiverPendingWrites": 1
+      },
+      "samples": [
+        {
+          "tSec": 2,
+          "senderHeapMiB": 5.4,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 567,
+          "receiverRssMiB": 544.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 3,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 3.9,
+          "senderRssMiB": 589.5,
+          "receiverRssMiB": 558.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 4,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 606.5,
+          "receiverRssMiB": 588.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 5.1,
+          "senderHeapMiB": 3.9,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 523.1,
+          "receiverRssMiB": 536.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 6.1,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 534.6,
+          "receiverRssMiB": 556.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 7.1,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 586.8,
+          "receiverRssMiB": 536.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 8.2,
+          "senderHeapMiB": 3.9,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 526.7,
+          "receiverRssMiB": 542.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 9.2,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 581.9,
+          "receiverRssMiB": 530.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 10.2,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 522.8,
+          "receiverRssMiB": 538.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 11.2,
+          "senderHeapMiB": 4,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 530.3,
+          "receiverRssMiB": 542.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 12.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 538,
+          "receiverRssMiB": 549.4,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 13.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 541.7,
+          "receiverRssMiB": 549.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 14.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 547,
+          "receiverRssMiB": 553.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 15.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 553.1,
+          "receiverRssMiB": 561.1,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 16.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 560.2,
+          "receiverRssMiB": 565.9,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 17.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 566.7,
+          "receiverRssMiB": 570.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 18.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 560.3,
+          "receiverRssMiB": 556.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 19.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 551.9,
+          "receiverRssMiB": 552.3,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 20.5,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 560.5,
+          "receiverRssMiB": 560.5,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 21.5,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 570.6,
+          "receiverRssMiB": 565.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 22.6,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 555.8,
+          "receiverRssMiB": 551.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 23.6,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 564.2,
+          "receiverRssMiB": 559.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 24.6,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 576.9,
+          "receiverRssMiB": 571.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 25.6,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 584.2,
+          "receiverRssMiB": 577,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 26.6,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 535.6,
+          "receiverRssMiB": 523.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 27.7,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 544.2,
+          "receiverRssMiB": 532.6,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 28.7,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 560.1,
+          "receiverRssMiB": 547.2,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 29.7,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 561.5,
+          "receiverRssMiB": 547,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 30.8,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 568.1,
+          "receiverRssMiB": 550.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 31.8,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 571.9,
+          "receiverRssMiB": 552.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 32.8,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 581,
+          "receiverRssMiB": 562.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 33.8,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 587.9,
+          "receiverRssMiB": 566.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 34.9,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 536.4,
+          "receiverRssMiB": 576.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 35.9,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 544.2,
+          "receiverRssMiB": 518.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 36.9,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 549.5,
+          "receiverRssMiB": 523.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 37.9,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 561,
+          "receiverRssMiB": 533.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 39,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.6,
+          "senderRssMiB": 549.6,
+          "receiverRssMiB": 582,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 40,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4,
+          "senderRssMiB": 551.8,
+          "receiverRssMiB": 554.1,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 41,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 560.6,
+          "receiverRssMiB": 527.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 42,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 572.4,
+          "receiverRssMiB": 536.3,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 43.1,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 564.9,
+          "receiverRssMiB": 525.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 44.1,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 561.2,
+          "receiverRssMiB": 524.4,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 45.1,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 569.7,
+          "receiverRssMiB": 533.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 46.1,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 576.2,
+          "receiverRssMiB": 535.2,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 47.2,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 580.7,
+          "receiverRssMiB": 538.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 48.2,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 589,
+          "receiverRssMiB": 546.3,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 49.2,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 534,
+          "receiverRssMiB": 557,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 50.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 543.6,
+          "receiverRssMiB": 562.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 51.3,
+          "senderHeapMiB": 4.1,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 529.3,
+          "receiverRssMiB": 547.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 52.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 540.4,
+          "receiverRssMiB": 556.8,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 53.3,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 544.9,
+          "receiverRssMiB": 558.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 54.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 550.6,
+          "receiverRssMiB": 564.7,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 55.4,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 557.3,
+          "receiverRssMiB": 568.6,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 56.4,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 557.1,
+          "receiverRssMiB": 566.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 57.4,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 552.3,
+          "receiverRssMiB": 559.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 58.4,
+          "senderHeapMiB": 4.2,
+          "receiverHeapMiB": 4.3,
+          "senderRssMiB": 538.4,
+          "receiverRssMiB": 548.6,
+          "receiverPendingWrites": 1
+        },
+        {
+          "tSec": 59.5,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.4,
+          "senderRssMiB": 544.5,
+          "receiverRssMiB": 556.5,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 60.5,
+          "senderHeapMiB": 4.3,
+          "receiverHeapMiB": 4.5,
+          "senderRssMiB": 556.2,
+          "receiverRssMiB": 564.9,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 61.5,
+          "senderHeapMiB": 4.4,
+          "receiverHeapMiB": 4.6,
+          "senderRssMiB": 562.3,
+          "receiverRssMiB": 569,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 62.5,
+          "senderHeapMiB": 4.5,
+          "receiverHeapMiB": 4.1,
+          "senderRssMiB": 572.3,
+          "receiverRssMiB": 517,
+          "receiverPendingWrites": 0
+        },
+        {
+          "tSec": 63.6,
+          "senderHeapMiB": 4.5,
+          "receiverHeapMiB": 4.2,
+          "senderRssMiB": 571.9,
+          "receiverRssMiB": 516.8,
+          "receiverPendingWrites": 0
+        }
+      ],
+      "writer": {
+        "writes": 2048,
+        "bytes": 2147483648,
+        "closed": true,
+        "aborted": false,
+        "name": "1795466476326-synthetic-2147483648.bin",
+        "maxPendingWrites": 1,
+        "pending": 0
+      },
+      "receiverFilesFoundOnDisk": 1,
+      "receiverSha256": "103f11474b7553a24fc7418c64b6a97088c39647541abfacfd897ec805e96ab5",
+      "hashMatch": true,
+      "consoleErrors": [],
+      "verdict": "PASS",
+      "finishedAt": "2026-11-23T20:42:20.920Z"
+    }
+  ]
+}

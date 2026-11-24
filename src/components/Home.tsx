@@ -94,8 +94,8 @@ export function Home({ onSelectScreen, userName, onUserNameChange }: HomeProps) 
 
           <p className="sub">
             Files move straight from your device to theirs over a direct peer-to-peer link.
-            On the same Wi-Fi it is instant. Nothing is ever stored on a server, and chats
-            are end-to-end encrypted.
+            On the same Wi-Fi it is instant. Nothing is ever stored on a server, and the
+            direct link is encrypted.
           </p>
 
           <div style={{ marginBottom: 24 }}>
@@ -189,7 +189,7 @@ export function Home({ onSelectScreen, userName, onUserNameChange }: HomeProps) 
           <b>
             <em>100 GB</em>
           </b>
-          <span>Max file size</span>
+          <span>Large-file design target</span>
         </div>
         <div className="stat">
           <b>
@@ -220,12 +220,12 @@ export function Home({ onSelectScreen, userName, onUserNameChange }: HomeProps) 
         <div className="feature">
           <div className="ic">{I.layers}</div>
           <h3>Streams to disk</h3>
-          <p>Files are written straight to disk as they arrive, so a 100 GB transfer never fills memory.</p>
+          <p>In Chrome and Edge, files are written straight to disk as they arrive, so memory stays flat. Other browsers hold the file in memory until it finishes.</p>
         </div>
         <div className="feature">
           <div className="ic">{I.shield}</div>
-          <h3>Encrypted end to end</h3>
-          <p>Every message and file is encrypted in transit by WebRTC's built-in DTLS layer.</p>
+          <h3>Encrypted in transit</h3>
+          <p>Files and messages on the direct link are encrypted by WebRTC's built-in DTLS layer. If that link drops, chat falls back to our signalling server and is marked as relayed.</p>
         </div>
       </div>
 

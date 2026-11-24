@@ -1,6 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect } from 'react';
 import type { CallMode, CallState, CallQuality, ChatMessage, Role } from './useWebRTC';
 import { v4 as uuidv4 } from 'uuid';
+import { isValidCallMode } from './transferProtocol';
+import { classifySelectedPath } from './connectionPath';
+
+// An unanswered call stops ringing (on both sides) after this long.
+const RING_TIMEOUT_MS = 45_000;
 
 const VIDEO_CONSTRAINTS_HD = {
   width: { ideal: 1280, min: 640 },
@@ -42,7 +47,18 @@ export function useCallManager(
 ) {
 
   const localStreamRef = useRef<MediaStream | null>(null);
+  // The stream from getUserMedia (camera and/or mic). It stays the source of
+  // truth while screen sharing swaps what is shown/sent, so the microphone and
+  // camera can always be found and stopped.
+  const cameraStreamRef = useRef<MediaStream | null>(null);
+  const screenStreamRef = useRef<MediaStream | null>(null);
+  const isScreenSharingRef = useRef(false);
   const cameraTrackRef = useRef<MediaStreamTrack | null>(null);
+  const ringTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const idleTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const recorderRef = useRef<{ stop: () => Promise<Blob> } | null>(null);
+  const remoteStreamRef = useRef<MediaStream | null>(null);
+  useEffect(() => { remoteStreamRef.current = remoteStream; }, [remoteStream]);
   const qualityMonitorHandleRef = useRef<NodeJS.Timeout | null>(null);
   const activeResolutionTierRef = useRef<'720p'|'480p'>('720p');
   const isCallerRef = useRef(false);
@@ -55,9 +71,35 @@ export function useCallManager(
   const enterCallState = useCallback((next: CallState) => {
     callStateRef.current = next;
     setCallState(next);
+    if (next !== 'ringing' && ringTimerRef.current) {
+      clearTimeout(ringTimerRef.current);
+      ringTimerRef.current = null;
+    }
+    if (idleTimerRef.current) {
+      clearTimeout(idleTimerRef.current);
+      idleTimerRef.current = null;
+    }
   }, [setCallState]);
 
-  useEffect(() => { localStreamRef.current = localStream; }, [localStream]);
+  // Show 'ended' / 'rejected' briefly, then return to idle.
+  const settleToIdle = useCallback((state: 'ended' | 'rejected') => {
+    enterCallState(state);
+    idleTimerRef.current = setTimeout(() => {
+      idleTimerRef.current = null;
+      if (callStateRef.current === state) enterCallState('idle');
+    }, 2000);
+  }, [enterCallState]);
+
+  // Keep the ref in step with state synchronously wherever a stream is set:
+  // cleanup can run before React re-renders, and must find the live tracks.
+  const setLocal = useCallback((stream: MediaStream | null) => {
+    localStreamRef.current = stream;
+    setLocalStream(stream);
+  }, [setLocalStream]);
+
+  const stopStream = (stream: MediaStream | null) => {
+    stream?.getTracks().forEach(t => t.stop());
+  };
 
   const sendCallSignal = useCallback((type: string, payload: any = {}) => {
     // Send over exactly one transport. Emitting on both the data channel and the
@@ -86,7 +128,6 @@ export function useCallManager(
         audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
         video: false,
       });
-      setLocalStream(stream);
       return stream;
     } else {
       let stream;
@@ -107,10 +148,25 @@ export function useCallManager(
           throw err;
         }
       }
-      setLocalStream(stream);
       return stream;
     }
-  }, [setLocalStream]);
+  }, []);
+
+  /**
+   * Acquire camera/mic for the current call. If the call was ended or failed
+   * while the permission prompt was open, the new stream is stopped at once
+   * instead of being left running with no call to belong to.
+   */
+  const acquireMedia = useCallback(async (mode: CallMode) => {
+    const stream = await startLocalMedia(mode);
+    if (callStateRef.current !== 'connecting') {
+      stopStream(stream);
+      throw new Error('call-no-longer-active');
+    }
+    cameraStreamRef.current = stream;
+    setLocal(stream);
+    return stream;
+  }, [startLocalMedia, setLocal]);
 
   const configureVideoSender = useCallback((sender: RTCRtpSender) => {
     const params = sender.getParameters();
@@ -152,23 +208,19 @@ export function useCallManager(
   const getConnectionQuality = useCallback(async () => {
     if (!pcRef.current) return null;
     const stats = await pcRef.current.getStats();
-    let candidatePair: any = null;
     let inboundVideo: any = null;
 
     stats.forEach((report) => {
-      if (report.type === 'candidate-pair' && report.state === 'succeeded' && report.nominated) {
-        candidatePair = report;
-      }
       if (report.type === 'inbound-rtp' && report.kind === 'video') {
         inboundVideo = report;
       }
     });
 
-    let pathLabel = 'Connecting…';
-    if (candidatePair) {
-      const localCandidate = stats.get(candidatePair.localCandidateId);
-      pathLabel = localCandidate?.candidateType === 'host' ? 'Local WiFi ⚡' : 'Relayed 🌐';
-    }
+    const path = classifySelectedPath(stats);
+    const pathLabel = path === 'local' ? 'Local network ⚡'
+      : path === 'direct' ? 'Direct'
+      : path === 'relayed' ? 'Relayed 🌐'
+      : 'Connecting…';
 
     let qualityTier = 'Low';
     if (inboundVideo) {
@@ -202,15 +254,47 @@ export function useCallManager(
     }, 2000);
   }, [getConnectionQuality, setCallQuality]);
 
+  const saveRecording = useCallback((blob: Blob) => {
+    if (!blob.size) return;
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `call-recording-${Date.now()}.webm`;
+    a.click();
+    // Give the browser time to start the download before releasing the URL.
+    setTimeout(() => URL.revokeObjectURL(url), 60_000);
+  }, []);
+
+  /** Stop an in-progress recording (if any) and save it to disk. */
+  const stopRecording = useCallback(async () => {
+    const rec = recorderRef.current;
+    if (!rec) return;
+    recorderRef.current = null;
+    try {
+      saveRecording(await rec.stop());
+    } catch (e) {
+      console.error('Stopping recording failed', e);
+    }
+    setIsRecording(false);
+  }, [saveRecording, setIsRecording]);
+
   const cleanupCall = useCallback(() => {
     stopQualityMonitor();
+    // A recording in progress is finished and saved rather than silently lost
+    // (and its canvas loop and audio context are released).
+    void stopRecording();
     setIsScreenSharing(false);
+    isScreenSharingRef.current = false;
     setIsRecording(false);
-    
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach(track => track.stop());
-      setLocalStream(null);
-    }
+
+    // Stop every track we ever started: the camera/mic stream, any screen
+    // capture, and whatever is currently previewed.
+    stopStream(cameraStreamRef.current);
+    stopStream(screenStreamRef.current);
+    stopStream(localStreamRef.current);
+    cameraStreamRef.current = null;
+    screenStreamRef.current = null;
+    setLocal(null);
     if (cameraTrackRef.current) {
       cameraTrackRef.current.stop();
       cameraTrackRef.current = null;
@@ -221,8 +305,9 @@ export function useCallManager(
       });
     }
     setRemoteStream(null);
+    setCallQuality(null);
     setCallMode(null);
-  }, [pcRef, stopQualityMonitor, setIsScreenSharing, setIsRecording, setLocalStream, setRemoteStream, setCallMode]);
+  }, [pcRef, stopQualityMonitor, stopRecording, setIsScreenSharing, setIsRecording, setLocal, setRemoteStream, setCallQuality, setCallMode]);
 
   // Use a ref for callMode since it's accessed in the callback
   const callModeRef = useRef<CallMode>(null);
@@ -242,11 +327,15 @@ export function useCallManager(
     enterCallState('idle');
   }, [cleanupCall, setMessages, enterCallState]);
 
-  const logCall = useCallback((reason: 'ended' | 'missed' | 'rejected') => {
+  const logCall = useCallback((reason: 'ended' | 'missed' | 'rejected' | 'unanswered' | 'lost') => {
     let text = '';
     const modeStr = callModeRef.current === 'video' ? 'Video call' : 'Voice call';
     if (reason === 'missed') {
       text = `Missed ${callModeRef.current === 'video' ? 'video' : 'voice'} call`;
+    } else if (reason === 'unanswered') {
+      text = `${modeStr} — no answer`;
+    } else if (reason === 'lost') {
+      text = `${modeStr} ended — connection lost`;
     } else if (reason === 'rejected') {
       text = `${modeStr} declined`;
     } else {
@@ -276,7 +365,9 @@ export function useCallManager(
       case 'call-request':
         // Already busy: ignore rather than stacking a second incoming call.
         if (callStateRef.current !== 'idle') return;
+        if (!isValidCallMode(msg.mode)) return;
         setCallMode(msg.mode);
+        callModeRef.current = msg.mode;
         isCallerRef.current = false;
         enterCallState('incoming');
         break;
@@ -285,24 +376,35 @@ export function useCallManager(
         // Only the caller acts on an accept, and only while still ringing.
         if (!isCallerRef.current || callStateRef.current !== 'ringing') return;
         enterCallState('connecting');
-        startLocalMedia(callModeRef.current)
+        let mediaReady = false;
+        acquireMedia(callModeRef.current)
           .then(async (stream) => {
+            mediaReady = true;
+            if (!pcRef.current) throw new Error('no-peer-connection');
             attachMediaToConnection(stream);
-            if (!pcRef.current) return;
             const offer = await pcRef.current.createOffer();
             await pcRef.current.setLocalDescription(offer);
             sendCallSignal('call-offer', { sdp: offer });
           })
           .catch((err) => {
-            console.error('Could not start local media for call', err);
+            if (err?.message === 'call-no-longer-active') return; // ended meanwhile
+            console.error('Could not start the call', err);
             sendCallSignal('call-end');
-            failCall('Call failed — camera or microphone unavailable.');
+            // Only blame the camera/mic when acquiring them is what failed.
+            failCall(!mediaReady
+              ? 'Call failed — camera or microphone unavailable.'
+              : err?.message === 'no-peer-connection'
+                ? 'Call failed — not connected to the other device.'
+                : 'Call failed — could not set up the call connection.');
           });
         break;
       }
 
       case 'call-offer':
-        if (!pcRef.current) return;
+        // Media renegotiation is only legitimate while a call is being set up
+        // or is running; never let it add tracks to an idle session.
+        if (!pcRef.current || (callStateRef.current !== 'connecting' && callStateRef.current !== 'active')) return;
+        if (!msg.sdp || typeof msg.sdp !== 'object') return;
         pcRef.current
           .setRemoteDescription(new RTCSessionDescription(msg.sdp))
           .then(async () => {
@@ -316,54 +418,72 @@ export function useCallManager(
       case 'call-answer':
         // Only meaningful while our own offer is outstanding.
         if (!pcRef.current || pcRef.current.signalingState !== 'have-local-offer') return;
+        if (!msg.sdp || typeof msg.sdp !== 'object') return;
         pcRef.current
           .setRemoteDescription(new RTCSessionDescription(msg.sdp))
           .catch((err) => console.error('Could not apply call answer', err));
         break;
 
       case 'call-reject':
-        if (callStateRef.current === 'idle') return;
+        if (callStateRef.current === 'idle' || callStateRef.current === 'ended' || callStateRef.current === 'rejected') return;
         logCall('rejected');
-        enterCallState('rejected');
         cleanupCall();
-        setTimeout(() => enterCallState('idle'), 2000);
+        settleToIdle('rejected');
         break;
 
-      case 'call-end':
-        if (callStateRef.current === 'idle') return;
-        logCall('ended');
-        enterCallState('ended');
+      case 'call-end': {
+        const state = callStateRef.current;
+        if (state === 'idle' || state === 'ended' || state === 'rejected') return;
+        // The caller gave up before we answered: that is a missed call.
+        logCall(state === 'incoming' ? 'missed' : 'ended');
         cleanupCall();
-        setTimeout(() => enterCallState('idle'), 2000);
+        settleToIdle('ended');
         break;
+      }
     }
-  }, [startLocalMedia, attachMediaToConnection, cleanupCall, failCall, logCall, pcRef, setCallMode, enterCallState, sendCallSignal]);
+  }, [acquireMedia, attachMediaToConnection, cleanupCall, failCall, logCall, pcRef, setCallMode, enterCallState, settleToIdle, sendCallSignal]);
 
   const startCall = useCallback((mode: CallMode) => {
     if (callStateRef.current !== 'idle') return;
+    if (!isValidCallMode(mode)) return;
     setCallMode(mode);
+    callModeRef.current = mode;
     isCallerRef.current = true;
     if (!sendCallSignal('call-request', { mode })) {
       failCall('Could not start the call — no connection to the other device.');
       return;
     }
     enterCallState('ringing');
-  }, [sendCallSignal, setCallMode, enterCallState, failCall]);
+    // Do not ring forever if the other side never answers.
+    ringTimerRef.current = setTimeout(() => {
+      ringTimerRef.current = null;
+      if (callStateRef.current !== 'ringing') return;
+      sendCallSignal('call-end');
+      logCall('unanswered');
+      cleanupCall();
+      settleToIdle('ended');
+    }, RING_TIMEOUT_MS);
+  }, [sendCallSignal, setCallMode, enterCallState, failCall, logCall, cleanupCall, settleToIdle]);
 
   const acceptCall = useCallback(async () => {
     if (callStateRef.current !== 'incoming') return;
     enterCallState('connecting');
+    let mediaReady = false;
     try {
-      const stream = await startLocalMedia(callModeRef.current);
+      const stream = await acquireMedia(callModeRef.current);
+      mediaReady = true;
       attachMediaToConnection(stream);
       sendCallSignal('call-accept');
-    } catch (err) {
-      // Most often the user denied the camera/microphone prompt.
-      console.error('Could not start local media for call', err);
+    } catch (err: any) {
+      if (err?.message === 'call-no-longer-active') return; // caller hung up meanwhile
+      console.error('Could not start the call', err);
       sendCallSignal('call-reject');
-      failCall('Call declined — camera or microphone unavailable.');
+      // Most often the user denied the camera/microphone prompt.
+      failCall(mediaReady
+        ? 'Call failed — could not set up the call connection.'
+        : 'Call declined — camera or microphone unavailable.');
     }
-  }, [startLocalMedia, attachMediaToConnection, sendCallSignal, enterCallState, failCall]);
+  }, [acquireMedia, attachMediaToConnection, sendCallSignal, enterCallState, failCall]);
 
   const rejectCall = useCallback(() => {
     if (callStateRef.current === 'idle') return;
@@ -374,13 +494,31 @@ export function useCallManager(
   }, [sendCallSignal, setCallMode, enterCallState, logCall]);
 
   const endCall = useCallback(() => {
-    if (callStateRef.current === 'idle') return;
-    logCall('ended');
+    const state = callStateRef.current;
+    if (state === 'idle' || state === 'ended' || state === 'rejected') return;
+    logCall(state === 'ringing' ? 'unanswered' : 'ended');
     sendCallSignal('call-end');
     cleanupCall();
-    enterCallState('ended');
-    setTimeout(() => enterCallState('idle'), 2000);
-  }, [sendCallSignal, cleanupCall, enterCallState, logCall]);
+    settleToIdle('ended');
+  }, [sendCallSignal, cleanupCall, settleToIdle, logCall]);
+
+  /**
+   * The peer connection or data channel is gone. Media cannot keep flowing, so
+   * end any call locally and release the camera and microphone.
+   */
+  const handleConnectionLost = useCallback(() => {
+    const state = callStateRef.current;
+    if (state === 'idle' || state === 'ended' || state === 'rejected') return;
+    logCall(state === 'incoming' ? 'missed' : 'lost');
+    cleanupCall();
+    settleToIdle('ended');
+  }, [cleanupCall, settleToIdle, logCall]);
+
+  // Unmount: no timer may fire into a torn-down component.
+  useEffect(() => () => {
+    if (ringTimerRef.current) clearTimeout(ringTimerRef.current);
+    if (idleTimerRef.current) clearTimeout(idleTimerRef.current);
+  }, []);
 
   const toggleMute = useCallback(() => {
     if (!localStreamRef.current) return false;
@@ -396,44 +534,85 @@ export function useCallManager(
     return videoTrack ? !videoTrack.enabled : false;
   }, []);
 
-  const startScreenShare = useCallback(async () => {
-    if (!pcRef.current) return;
+  const stopScreenShare = useCallback(async () => {
+    // Read from a ref: this also runs from the screen track's 'ended' event
+    // (the browser's own "Stop sharing" button), where a captured state value
+    // would be stale and make the call a no-op.
+    if (!isScreenSharingRef.current) return;
+    isScreenSharingRef.current = false;
+    const screenStream = screenStreamRef.current;
+    screenStreamRef.current = null;
+    const screenTrack = screenStream?.getVideoTracks()[0] ?? null;
     try {
-      const screenStream = await navigator.mediaDevices.getDisplayMedia({
+      const videoSender = pcRef.current?.getSenders().find(s => s.track === screenTrack) ??
+        pcRef.current?.getSenders().find(s => s.track && s.track.kind === 'video');
+      if (videoSender && cameraTrackRef.current) {
+        await videoSender.replaceTrack(cameraTrackRef.current);
+      }
+    } catch (e) {
+      console.error('Restoring camera after screen share failed', e);
+    }
+    stopStream(screenStream);
+    cameraTrackRef.current = null;
+    setIsScreenSharing(false);
+    // Preview the camera/mic stream again (not the dead screen capture).
+    if (cameraStreamRef.current) setLocal(cameraStreamRef.current);
+  }, [pcRef, setIsScreenSharing, setLocal]);
+
+  const startScreenShare = useCallback(async () => {
+    if (!pcRef.current || isScreenSharingRef.current) return;
+    const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
+    // Screen sharing replaces the outgoing camera track; an audio-only call has
+    // none. Bail out before prompting so no capture is left running unused.
+    if (!videoSender) {
+      setMessages(prev => [...prev, {
+        id: uuidv4(),
+        senderRole: 'system',
+        text: 'Screen sharing is available in video calls.',
+        isSystemMessage: true,
+        timestamp: Date.now(),
+      }]);
+      return;
+    }
+    let screenStream: MediaStream | null = null;
+    try {
+      screenStream = await navigator.mediaDevices.getDisplayMedia({
         video: { frameRate: 30 },
         audio: false,
       });
       const screenTrack = screenStream.getVideoTracks()[0];
-
-      const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
-      if (!videoSender) return;
+      // The call may have ended while the picker was open.
+      if (callStateRef.current !== 'active' && callStateRef.current !== 'connecting') {
+        stopStream(screenStream);
+        return;
+      }
 
       cameraTrackRef.current = videoSender.track;
       await videoSender.replaceTrack(screenTrack);
       screenTrack.contentHint = 'detail';
 
+      screenStreamRef.current = screenStream;
+      isScreenSharingRef.current = true;
       setIsScreenSharing(true);
-      setLocalStream(screenStream);
+      // Preview the screen, but keep the microphone track in the local stream
+      // so mute keeps working while sharing.
+      const audio = cameraStreamRef.current?.getAudioTracks() ?? [];
+      setLocal(new MediaStream([screenTrack, ...audio]));
 
-      screenTrack.onended = () => stopScreenShare();
+      screenTrack.onended = () => { void stopScreenShare(); };
     } catch (e) {
       console.error('Screen share error', e);
+      if (!isScreenSharingRef.current) stopStream(screenStream);
     }
-  }, [pcRef, setIsScreenSharing, setLocalStream]);
-
-  const stopScreenShare = useCallback(async () => {
-    if (!isScreenSharing || !pcRef.current) return;
-    const videoSender = pcRef.current.getSenders().find(s => s.track && s.track.kind === 'video');
-    if (videoSender && cameraTrackRef.current) {
-      await videoSender.replaceTrack(cameraTrackRef.current);
-    }
-    setIsScreenSharing(false);
-    if (localStreamRef.current) setLocalStream(localStreamRef.current);
-  }, [isScreenSharing, pcRef, setIsScreenSharing, setLocalStream]);
+  }, [pcRef, setIsScreenSharing, setLocal, setMessages, stopScreenShare]);
 
   const attachTrackHandler = useCallback(() => {
     if (!pcRef.current) return;
     pcRef.current.ontrack = (event) => {
+      // Tracks only matter while a call is being set up or running. A late
+      // track after hang-up must not resurrect the call UI.
+      const state = callStateRef.current;
+      if (state !== 'connecting' && state !== 'active') return;
       setRemoteStream(prev => {
         const newStream = new MediaStream();
         if (prev) {
@@ -456,6 +635,14 @@ export function useCallManager(
   }, [pcRef, setRemoteStream, enterCallState, startQualityMonitor]);
 
   const startRecording = useCallback(({ localVideoEl, remoteVideoEl }: { localVideoEl: HTMLVideoElement | null, remoteVideoEl: HTMLVideoElement | null }) => {
+    if (recorderRef.current) return recorderRef.current;
+    if (typeof MediaRecorder === 'undefined') {
+      setMessages(prev => [...prev, {
+        id: uuidv4(), senderRole: 'system', text: 'Recording is not supported in this browser.',
+        isSystemMessage: true, timestamp: Date.now(),
+      }]);
+      return null;
+    }
     const canvas = document.createElement('canvas');
     canvas.width = 1280;
     canvas.height = 720;
@@ -487,8 +674,9 @@ export function useCallManager(
     if (localStreamRef.current?.getAudioTracks().length) {
       audioCtx.createMediaStreamSource(new MediaStream(localStreamRef.current.getAudioTracks())).connect(dest);
     }
-    if (remoteStream?.getAudioTracks().length) {
-      audioCtx.createMediaStreamSource(new MediaStream(remoteStream.getAudioTracks())).connect(dest);
+    const remote = remoteStreamRef.current;
+    if (remote?.getAudioTracks().length) {
+      audioCtx.createMediaStreamSource(new MediaStream(remote.getAudioTracks())).connect(dest);
     }
 
     const mixedStream = new MediaStream([
@@ -496,27 +684,46 @@ export function useCallManager(
       ...dest.stream.getAudioTracks(),
     ]);
 
+    const releaseAll = () => {
+      drawing = false;
+      canvasStream.getTracks().forEach((t: MediaStreamTrack) => t.stop());
+      audioCtx.close().catch(() => {});
+    };
+
     const chunks: BlobPart[] = [];
-    // @ts-ignore
-    const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
-    const recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: 2_000_000 });
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    recorder.start(1000);
+    let recorder: MediaRecorder;
+    try {
+      const mimeType = MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm';
+      recorder = new MediaRecorder(mixedStream, { mimeType, videoBitsPerSecond: 2_000_000 });
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+      recorder.start(1000);
+    } catch (e) {
+      console.error('Could not start recording', e);
+      releaseAll();
+      setMessages(prev => [...prev, {
+        id: uuidv4(), senderRole: 'system', text: 'Recording could not be started in this browser.',
+        isSystemMessage: true, timestamp: Date.now(),
+      }]);
+      return null;
+    }
 
     setIsRecording(true);
 
-    return {
+    const handle = {
       stop: () => new Promise<Blob>((resolve) => {
-        drawing = false;
-        recorder.onstop = () => {
-          audioCtx.close();
+        const finish = () => {
+          releaseAll();
           setIsRecording(false);
           resolve(new Blob(chunks, { type: 'video/webm' }));
         };
-        recorder.stop();
+        if (recorder.state === 'inactive') return finish();
+        recorder.onstop = finish;
+        try { recorder.stop(); } catch { finish(); }
       }),
     };
-  }, [remoteStream, setIsRecording]);
+    recorderRef.current = handle;
+    return handle;
+  }, [setIsRecording, setMessages]);
 
   const packageRecordingForChat = useCallback((blob: Blob) => {
     const filename = `call-recording-${Date.now()}.webm`;
@@ -543,6 +750,8 @@ export function useCallManager(
     startScreenShare,
     stopScreenShare,
     startRecording,
+    stopRecording,
     packageRecordingForChat,
+    handleConnectionLost,
   };
 }
